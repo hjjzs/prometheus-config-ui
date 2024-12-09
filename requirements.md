@@ -62,6 +62,30 @@ alertmanager key 设计：
 2、go 实现
 - 在prom_handlers.go 中实现,ui中需要的操作逻辑。
 - 在service目录下实现prom_service.go实现consul 操作
+- 保存prometheus config时，使用prometheus库校验配置文件是否正确
+
+
+### prometheus 告警规则管理
+1、ui 页面
+- 对应templates/prometheus_rules.html
+- 点击菜单"prom告警规则管理"时展示prometheus 节点列表
+- 点击节点，展示该节点下的告警规则列表
+- 告警规则列表有一个操作按钮"编辑"，点击"编辑"按钮，弹出prometheus 告警规则编辑弹窗
+- 弹窗中展示prometheus 告警规则内容
+- 弹窗中有一个"保存"按钮，点击"保存"按钮，保存prometheus 告警规则
+- 告警规则列表有一个操作按钮"启用"，点击"启用"按钮，启用该告警规则
+- 告警规则列表有一个操作按钮"禁用"，点击"禁用"按钮，禁用该告警规则
+- 告警规则列表有一个操作按钮"删除"，点击"删除"按钮，删除该告警规则
+- 告警规则列表有一个操作按钮"添加"，点击"添加"按钮，弹出prometheus 告警规则编辑弹窗
+
+2、go 实现
+- 在prom_handlers.go 中实现,ui中需要的操作逻辑。
+- 在service目录下实现prom_service.go实现consul 操作
+
+
+
+
+
 
 
 

@@ -5,6 +5,8 @@ import (
 	"github.com/hashicorp/consul/api"
 	"consul-ui/types"
 	"strings"
+	promconfig "github.com/prometheus/prometheus/config"
+	"gopkg.in/yaml.v3"
 )
 
 type PromService struct {
@@ -54,16 +56,24 @@ func (s *PromService) GetConfig(clusterName string) (string, error) {
 }
 
 // 保存配置
-func (s *PromService) SaveConfig(clusterName, config string) error {
+func (s *PromService) SaveConfig(clusterName, configContent string) error {
+	var cfg promconfig.Config
+	if err := yaml.Unmarshal([]byte(configContent), &cfg); err != nil {
+		return fmt.Errorf("invalid config format: %v", err)
+	}
+
+	// 使用默认值进行验证
+	// if _, err := promconfig.Load(configContent, false, nil); err != nil {
+	// 	return fmt.Errorf("invalid prometheus config: %v", err)
+	// }
+
+	// 保存到 Consul
 	key := fmt.Sprintf("prom/cluster/%s/config", clusterName)
 	_, err := s.consul.Client.KV().Put(&api.KVPair{
 		Key:   key,
-		Value: []byte(config),
+		Value: []byte(configContent),
 	}, nil)
-	if err != nil {
-		return fmt.Errorf("failed to save config: %v", err)
-	}
-	return nil
+	return err
 }
 
 // 添加新集群
