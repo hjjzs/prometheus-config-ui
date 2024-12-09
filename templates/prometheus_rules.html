@@ -1,22 +1,188 @@
 {{define "prometheus-rules"}}
 <div class="prom-rules">
-    <h2>Prometheus 告警规则列表</h2>
-    <div class="rules-list">
-        {{range .Rules}}
-        <div class="rule-item">
-            <h3>{{.RuleFile}}</h3>
-            <div class="rule-status">
-                状态: {{if .Enable}}启用{{else}}禁用{{end}}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0">Prometheus 集群列表</h2>
+    </div>
+
+    <div class="clusters-list">
+        {{if .Clusters}}
+            <div class="list-group shadow-sm">
+                {{range .Clusters}}
+                <a href="/prometheus/rules/{{.Name}}" class="list-group-item list-group-item-action hover-shadow">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-hdd-network me-2 text-primary"></i>
+                            <h5 class="mb-0 d-inline">{{.Name}}</h5>
+                        </div>
+                        <div>
+                            <span class="badge bg-light text-primary me-2">
+                                <i class="bi bi-bell me-1"></i>告警规则
+                            </span>
+                            <i class="bi bi-chevron-right text-primary"></i>
+                        </div>
+                    </div>
+                </a>
+                {{end}}
             </div>
-            <pre class="rule-content">{{.Content}}</pre>
-            <div class="actions">
-                <button onclick="editRule('{{.RuleFile}}')">编辑</button>
-                <button onclick="toggleRule('{{.RuleFile}}')">{{if .Enable}}禁用{{else}}启用{{end}}</button>
-                <button onclick="deleteRule('{{.RuleFile}}')">删除</button>
+        {{else}}
+            <div class="alert alert-info text-center py-5 shadow-sm">
+                <i class="bi bi-info-circle-fill fs-4 d-block mb-3 text-primary"></i>
+                <p class="mb-0">暂无Prometheus集群</p>
+                <small class="text-muted">请先添加集群后管理告警规则</small>
             </div>
-        </div>
         {{end}}
-        <button class="add-btn" onclick="addNewRule()">添加新规则</button>
     </div>
 </div>
+{{end}}
+
+{{define "prometheus-cluster-rules"}}
+<div class="prom-rules">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="/prometheus/rules" class="btn btn-outline-secondary btn-sm mb-2">
+                <i class="bi bi-arrow-left me-1"></i>返回集群列表
+            </a>
+            <h2 class="h3 mb-0">{{.Cluster}} - 告警规则列表</h2>
+        </div>
+        <button class="btn btn-primary" onclick="addNewRule()">
+            <i class="bi bi-plus-lg me-2"></i>添加新规则
+        </button>
+    </div>
+
+    <div class="rules-list">
+        {{if .Rules}}
+            <div class="list-group shadow-sm" >
+                {{range .Rules}}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">{{.RuleFile}}</h5>
+                        <span class="badge {{if .Enable}}bg-success{{else}}bg-danger{{end}}">
+                            {{if .Enable}}启用{{else}}禁用{{end}}
+                        </span>
+                    </div>
+                    <pre class="rule-content mb-3">{{.Content}}</pre>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="editRule('{{.RuleFile}}')">
+                            <i class="bi bi-pencil me-1"></i>编辑
+                        </button>
+                        <button class="btn btn-outline-{{if .Enable}}warning{{else}}success{{end}} btn-sm" 
+                                onclick="toggleRule('{{.RuleFile}}', '{{if .Enable}}false{{else}}true{{end}}')">
+                            <i class="bi bi-{{if .Enable}}pause{{else}}play{{end}} me-1"></i>
+                            {{if .Enable}}禁用{{else}}启用{{end}}
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteRule('{{.RuleFile}}')">
+                            <i class="bi bi-trash me-1"></i>删除
+                        </button>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        {{else}}
+            <div class="alert alert-info text-center py-5">
+                <i class="bi bi-info-circle fs-4 d-block mb-3"></i>
+                暂无告警规则
+            </div>
+        {{end}}
+    </div>
+
+    <!-- 编辑规则弹窗 -->
+    <div class="modal fade" id="ruleModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑告警规则</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="ruleFile" class="form-control mb-3" placeholder="规则文件名">
+                    <textarea id="ruleContent" class="form-control font-monospace" rows="15"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveRule()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentCluster = '{{.Cluster}}';
+let ruleModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    ruleModal = new bootstrap.Modal(document.getElementById('ruleModal'));
+});
+
+function editRule(ruleFile) {
+    fetch(`/api/prometheus/rules/${currentCluster}/${ruleFile}`)
+        .then(response => response.json())
+        .then(rule => {
+            document.getElementById('ruleFile').value = rule.RuleFile;
+            document.getElementById('ruleFile').disabled = true;
+            document.getElementById('ruleContent').value = rule.Content;
+            ruleModal.show();
+        });
+}
+
+function addNewRule() {
+    document.getElementById('ruleFile').value = '';
+    document.getElementById('ruleFile').disabled = false;
+    document.getElementById('ruleContent').value = '';
+    ruleModal.show();
+}
+
+function saveRule() {
+    const ruleFile = document.getElementById('ruleFile').value;
+    const content = document.getElementById('ruleContent').value;
+    
+    if (!ruleFile) {
+        alert('请输入规则文件名');
+        return;
+    }
+    
+    fetch(`/api/prometheus/rules/${currentCluster}/${ruleFile}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'text/plain',
+        },
+        body: content,
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(text);
+            });
+        }
+        ruleModal.hide();
+        window.location.reload();
+    })
+    .catch(error => {
+        alert('保存规则失败: ' + error.message);
+    });
+}
+
+function toggleRule(ruleFile, enableStr) {
+    const enable = enableStr === 'true';
+    fetch(`/api/prometheus/rules/${currentCluster}/${ruleFile}/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ enable }),
+    })
+    .then(() => window.location.reload())
+    .catch(error => alert('切换规则状态失败: ' + error.message));
+}
+
+function deleteRule(ruleFile) {
+    if (confirm(`确定要删除规则 ${ruleFile} 吗?`)) {
+        fetch(`/api/prometheus/rules/${currentCluster}/${ruleFile}`, {
+            method: 'DELETE',
+        })
+        .then(() => window.location.reload())
+        .catch(error => alert('删除规则失败: ' + error.message));
+    }
+}
+</script>
 {{end}} 

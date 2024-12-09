@@ -27,7 +27,7 @@ prometheus key 设计：
 
 - config: `/prom/cluster/{cluster_name}/config` # 配置文件
 - rules: `/prom/cluster/{cluster_name}/rules/{rules_file}` # 一个rules_file 对应一个告警规则文件
-- `/prom/cluster/{cluster_name}/rules/{rules_file}/rules.yml` # 告警规则文件内容
+- `/prom/cluster/{cluster_name}/rules/{rules_file}/rules` # 告警规则文件内容
 - `/prom/cluster/{cluster_name}/rules/{rules_file}/enable` # 同路径下的rule.yml告警规则文件是否启用
 
 alertmanager key 设计：

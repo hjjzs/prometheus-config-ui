@@ -11,18 +11,18 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-auto px-0 sidebar">
-                <div class="d-flex flex-column">
+    <div class="container-fluid vh-100">
+        <div class="row h-100">
+            <!-- Sidebar - 添加固定宽度和高度 -->
+            <div class="col-auto px-0 sidebar" style="width: 250px;">
+                <div class="d-flex flex-column h-100">
                     <div class="logo p-3">
                         <i class="bi bi-graph-up text-light fs-4 me-2"></i>
                         <span class="fs-5">管理系统</span>
                     </div>
                     <nav class="nav flex-column">
                         <a class="nav-link" href="/prometheus/configs">
-                            <i class="bi bi-gear me-2"></i>Prome配置文件
+                            <i class="bi bi-gear me-2"></i>Prome配置管理
                         </a>
                         <a class="nav-link" href="/prometheus/rules">
                             <i class="bi bi-bell me-2"></i>Prome告警规则
@@ -43,8 +43,8 @@
                 </div>
             </div>
             
-            <!-- Main Content -->
-            <div class="col ps-0 main-content">
+            <!-- Main Content - 修改样式确保固定位置 -->
+            <div class="col main-content">
                 <header class="navbar navbar-light bg-white border-bottom">
                     <div class="container-fluid">
                         <span class="navbar-brand mb-0 h1">Dashboard</span>
@@ -55,7 +55,7 @@
                     </div>
                 </header>
                 
-                <div class="content p-4" style="height: calc(100vh - 60px); overflow-y: auto;">
+                <div class="content p-4">
                     {{if eq .Content "users"}}
                         {{template "users" .}}
                     {{else if eq .Content "roles"}}
@@ -68,6 +68,8 @@
                         {{template "alertmanager-configs" .}}
                     {{else if eq .Content "alertmanager-rules"}}
                         {{template "alertmanager-rules" .}}
+                    {{else if eq .Content "prometheus-cluster-rules"}}
+                        {{template "prometheus-cluster-rules" .}}
                     {{else}}
                         <h2>欢迎使用Prometheus & Alertmanager 管理系统</h2>
                     {{end}}

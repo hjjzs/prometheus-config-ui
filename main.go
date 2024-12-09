@@ -39,6 +39,7 @@ func main() {
     r.HandleFunc("/", app.HandleHome)
     r.HandleFunc("/prometheus/configs", app.HandlePromConfigs)
     r.HandleFunc("/prometheus/rules", app.HandlePromRules)
+    r.HandleFunc("/prometheus/rules/{cluster}", app.HandleClusterRules)
     r.HandleFunc("/alertmanager/configs", app.HandleAlertConfigs)
     r.HandleFunc("/alertmanager/rules", app.HandleAlertRules)
     r.HandleFunc("/users", app.HandleUsers)
@@ -49,6 +50,11 @@ func main() {
     r.HandleFunc("/api/prometheus/configs/{cluster}", app.HandleSaveConfig).Methods("POST")
     r.HandleFunc("/api/prometheus/clusters", app.HandleAddCluster).Methods("POST")
     r.HandleFunc("/api/prometheus/clusters/{cluster}", app.HandleDeleteCluster).Methods("DELETE")
+    r.HandleFunc("/prometheus/rules/{cluster}", app.HandlePromRules)
+    r.HandleFunc("/api/prometheus/rules/{cluster}/{rule}", app.HandleGetRule).Methods("GET")
+    r.HandleFunc("/api/prometheus/rules/{cluster}/{rule}", app.HandleSaveRule).Methods("POST")
+    r.HandleFunc("/api/prometheus/rules/{cluster}/{rule}", app.HandleDeleteRule).Methods("DELETE")
+    r.HandleFunc("/api/prometheus/rules/{cluster}/{rule}/toggle", app.HandleToggleRule).Methods("POST")
 
     // 优雅退出程序
     srv := &http.Server{

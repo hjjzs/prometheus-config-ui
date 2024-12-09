@@ -4,7 +4,12 @@
 }
 
 .sidebar {
-    background-color: #2c3e50;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1000;
+    background-color: #333;
     min-height: 97vh;
     width: 190px;
 }
@@ -63,8 +68,11 @@ nav ul li a:hover {
 }
 
 .main-content {
-    min-height: 97vh;
+    margin-left: 250px;
+    min-height: 100vh;
+    width: calc(100% - 250px);
     background-color: #f8f9fa;
+    overflow-x: auto;
 }
 
 header {
@@ -100,9 +108,10 @@ header {
 }
 
 .content {
-    flex: 1;
-    padding: 30px;
+    height: calc(100vh - 60px);
     overflow-y: auto;
+    overflow-x: auto;
+    min-width: 800px;
 }
 
 .config-list, .rules-list, .users-list, .roles-list {
@@ -194,6 +203,7 @@ pre.config-content, pre.rule-content {
 /* Card hover effect */
 .card {
     transition: transform 0.2s, box-shadow 0.2s;
+    min-width: 750px;
 }
 
 .card:hover {
@@ -249,4 +259,12 @@ code {
 .form-control {
     font-family: monospace;
     font-size: 14px;
+}
+
+.table-responsive {
+    min-width: 800px;
+}
+
+.form-container {
+    min-width: 750px;
 } 

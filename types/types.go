@@ -9,3 +9,10 @@ type User struct {
     Token    string
     Role     string
 } 
+
+
+type Rule struct {
+	RuleFile string
+	Content  string
+	Enable   bool
+}

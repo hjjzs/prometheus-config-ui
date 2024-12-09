@@ -7,6 +7,7 @@ import (
 	"strings"
 	promconfig "github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v3"
+	"github.com/prometheus/prometheus/model/rulefmt"
 )
 
 type PromService struct {
@@ -107,4 +108,132 @@ func getClusterName(key string) string {
 		return parts[2]
 	}
 	return ""
-} 
+}
+
+
+// 获取规则列表
+func (s *PromService) ListRules(clusterName string) ([]types.Rule, error) {
+	prefix := fmt.Sprintf("prom/cluster/%s/rules/", clusterName)
+	pairs, _, err := s.consul.Client.KV().List(prefix, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list rules: %v", err)
+	}
+
+	ruleMap := make(map[string]*types.Rule)
+	for _, pair := range pairs {
+		parts := strings.Split(pair.Key, "/")
+		if len(parts) < 5 {
+			continue
+		}
+		
+		ruleFile := parts[4]
+		if _, exists := ruleMap[ruleFile]; !exists {
+			ruleMap[ruleFile] = &types.Rule{
+				RuleFile: ruleFile,
+			}
+		}
+
+		if strings.HasSuffix(pair.Key, "/rules") {
+			ruleMap[ruleFile].Content = string(pair.Value)
+		} else if strings.HasSuffix(pair.Key, "/enable") {
+			ruleMap[ruleFile].Enable = string(pair.Value) == "true"
+		}
+	}
+
+	rules := make([]types.Rule, 0)
+	for _, rule := range ruleMap {
+		if rule.Content != "" {
+			rules = append(rules, *rule)
+		}
+	}
+	return rules, nil
+}
+
+// 获取单个规则
+func (s *PromService) GetRule(clusterName, ruleFile string) (*types.Rule, error) {
+	contentKey := fmt.Sprintf("prom/cluster/%s/rules/%s/rules", clusterName, ruleFile)
+	enableKey := fmt.Sprintf("prom/cluster/%s/rules/%s/enable", clusterName, ruleFile)
+	
+	contentPair, _, err := s.consul.Client.KV().Get(contentKey, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rule content: %v", err)
+	}
+	
+	enablePair, _, err := s.consul.Client.KV().Get(enableKey, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rule status: %v", err)
+	}
+	
+	if contentPair == nil {
+		return nil, nil
+	}
+	
+	return &types.Rule{
+		RuleFile: ruleFile,
+		Content:  string(contentPair.Value),
+		Enable:   enablePair != nil && string(enablePair.Value) == "true",
+	}, nil
+}
+
+// 保存规则
+func (s *PromService) SaveRule(clusterName, ruleFile, content string) error {
+	// 验证规则格式
+	if err := validateRuleContent(content); err != nil {
+		return fmt.Errorf("invalid rule format: %v", err)
+	}
+	
+	contentKey := fmt.Sprintf("prom/cluster/%s/rules/%s/rules", clusterName, ruleFile)
+	enableKey := fmt.Sprintf("prom/cluster/%s/rules/%s/enable", clusterName, ruleFile)
+	
+	// 保存规则内容
+	_, err := s.consul.Client.KV().Put(&api.KVPair{
+		Key:   contentKey,
+		Value: []byte(content),
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("failed to save rule content: %v", err)
+	}
+	
+	// 默认启用规则
+	_, err = s.consul.Client.KV().Put(&api.KVPair{
+		Key:   enableKey,
+		Value: []byte("true"),
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("failed to save rule status: %v", err)
+	}
+	
+	return nil
+}
+
+// 删除规则
+func (s *PromService) DeleteRule(clusterName, ruleFile string) error {
+	prefix := fmt.Sprintf("prom/cluster/%s/rules/%s", clusterName, ruleFile)
+	_, err := s.consul.Client.KV().DeleteTree(prefix, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete rule: %v", err)
+	}
+	return nil
+}
+
+// 切换规则状态
+func (s *PromService) ToggleRule(clusterName, ruleFile string, enable bool) error {
+	key := fmt.Sprintf("prom/cluster/%s/rules/%s/enable", clusterName, ruleFile)
+	_, err := s.consul.Client.KV().Put(&api.KVPair{
+		Key:   key,
+		Value: []byte(fmt.Sprintf("%v", enable)),
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("failed to toggle rule: %v", err)
+	}
+	return nil
+}
+
+// 验证规则内容
+func validateRuleContent(content string) error {
+	_, errs := rulefmt.Parse([]byte(content))
+	if len(errs) > 0 {
+		return fmt.Errorf("invalid rule content: %v", errs)
+	}
+	return nil
+}
