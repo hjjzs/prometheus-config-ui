@@ -53,16 +53,15 @@ alertmanager key 设计：
 
 ### prometheus 配置文件管理
 1、ui 页面
-- 展示prometheus节点
-- 点击prometheus节点，展示prometheus 配置文件
-- 如果prometheus 配置文件不存在，则展示添加prometheus 配置文件按钮
-- 点击添加prometheus 配置文件按钮，弹出添加prometheus 配置文件弹窗
-- 添加prometheus 配置文件弹窗，展示prometheus 配置文件内容
-- 配置文件弹窗,分配置文件global、alerting、rule_files、scrape_configs部分，对应prometheus 配置文件的global、alerting、rule_files、scrape_configs部分
+- 对应templates/prometheus_configs.html
+- 点击菜单"prom配置文件管理"时展示prometheus 节点列表
+- 节点列表有一个操作按钮"编辑"，点击"编辑"按钮，弹出prometheus 配置文件编辑弹窗
+- 弹窗中展示prometheus 配置文件内容
+- 弹窗中有一个"保存"按钮，点击"保存"按钮，保存prometheus 配置文件
+
 2、go 实现
-- 在prom_handlers.go 中实现使用prometheus官方库实现consul中保存的config yml 配置解析。
-- 将解析的prometheus.yml文件展示到ui页面
-- 在consul_service.go 中实现consul 操作
+- 在prom_handlers.go 中实现,ui中需要的操作逻辑。
+- 在service目录下实现prom_service.go实现consul 操作
 
 
 

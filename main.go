@@ -44,6 +44,12 @@ func main() {
     r.HandleFunc("/users", app.HandleUsers)
     r.HandleFunc("/roles", app.HandleRoles)
 
+    // 添加新的API路由
+    r.HandleFunc("/api/prometheus/configs/{cluster}", app.HandleGetConfig).Methods("GET")
+    r.HandleFunc("/api/prometheus/configs/{cluster}", app.HandleSaveConfig).Methods("POST")
+    r.HandleFunc("/api/prometheus/clusters", app.HandleAddCluster).Methods("POST")
+    r.HandleFunc("/api/prometheus/clusters/{cluster}", app.HandleDeleteCluster).Methods("DELETE")
+
     // 优雅退出程序
     srv := &http.Server{
         Addr:    ":8080",

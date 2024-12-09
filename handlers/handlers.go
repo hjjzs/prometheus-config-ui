@@ -3,16 +3,14 @@ package handlers
 import (
     "net/http"
     "html/template"
-    "github.com/hashicorp/consul/api"
     "consul-ui/service"
     "log"
     "os"
 )
 
 type Application struct {
-    Consul    *api.Client
     Templates *template.Template
-    ConsulService *service.ConsulService
+    PromService *service.PromService
     Logger *log.Logger
 }
 
@@ -23,10 +21,10 @@ func NewApplication(templates *template.Template) *Application {
     if err != nil {
         panic(err)
     }
+    promService := service.NewPromService(consulService)
     return &Application{
-        Consul: consulService.Client,
         Templates: templates,
-        ConsulService: consulService,
+        PromService: promService,
         Logger: log.New(os.Stdout, "consul-ui: ", log.LstdFlags),
     }
 }

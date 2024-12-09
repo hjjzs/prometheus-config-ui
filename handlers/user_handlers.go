@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"net/http"
+	"consul-ui/types"
 )
 
 func (app *Application) HandleUsers(w http.ResponseWriter, r *http.Request) {
-	users := []User{
+	users := []types.User{
 		{
 			Username: "admin",
 			Token:    "admin-token-xxx",
@@ -19,7 +20,7 @@ func (app *Application) HandleUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		Users []User
+		Users []types.User
 		Content string
 	}{
 		Users: users,

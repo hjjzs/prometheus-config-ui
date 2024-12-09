@@ -2,6 +2,108 @@
 <div class="prom-configs">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="h3 mb-0">Prometheus 配置文件管理</h2>
+        <button class="btn btn-primary" onclick="addNewCluster()">
+            <i class="bi bi-plus-lg me-2"></i>添加新集群
+        </button>
+    </div>
+
+    <div class="clusters-list">
+        {{if .Clusters}}
+            <div class="list-group shadow-sm">
+                {{range .Clusters}}
+                <div class="list-group-item d-flex justify-content-between align-items-center hover-shadow">
+                    <h5 class="mb-0 text-primary">{{.Name}}</h5>
+                    <div class="d-flex gap-3">
+                        <button class="btn btn-outline-primary btn-sm" onclick="editConfig('{{.Name}}')">
+                            <i class="bi bi-pencil me-1"></i>编辑配置
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteCluster('{{.Name}}')">
+                            <i class="bi bi-trash me-1"></i>删除集群
+                        </button>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        {{else}}
+            <div class="alert alert-info text-center py-5 shadow-sm">
+                <i class="bi bi-info-circle fs-4 d-block mb-3"></i>
+                暂无 Prometheus 集群配置
+            </div>
+        {{end}}
+    </div>
+
+    <!-- 编辑配置弹窗 -->
+    <div class="modal fade" id="configModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title text-primary">
+                        <i class="bi bi-gear me-2"></i>编辑 Prometheus 配置
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <textarea id="configContent" class="form-control font-monospace" rows="20" style="resize: vertical;"></textarea>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i>取消
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="saveConfig()">
+                        <i class="bi bi-check-lg me-1"></i>保存
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+let currentCluster = '';
+
+function editConfig(clusterName) {
+    currentCluster = clusterName;
+    fetch(`/api/prometheus/configs/${clusterName}`)
+        .then(response => response.text())
+        .then(config => {
+            document.getElementById('configContent').value = config;
+            new bootstrap.Modal(document.getElementById('configModal')).show();
+        });
+}
+
+function saveConfig() {
+    const config = document.getElementById('configContent').value;
+    fetch(`/api/prometheus/configs/${currentCluster}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'text/plain',
+        },
+        body: config,
+    }).then(() => {
+        bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
+        window.location.reload();
+    });
+}
+
+function addNewCluster() {
+    const name = prompt('请输入新集群名称:');
+    if (name) {
+        fetch('/api/prometheus/clusters', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name }),
+        }).then(() => window.location.reload());
+    }
+}
+
+function deleteCluster(name) {
+    if (confirm(`确定要删除集群 ${name} 吗?`)) {
+        fetch(`/api/prometheus/clusters/${name}`, {
+            method: 'DELETE',
+        }).then(() => window.location.reload());
+    }
+}
+</script>
 {{end}}
