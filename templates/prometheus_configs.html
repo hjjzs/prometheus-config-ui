@@ -96,6 +96,22 @@ function saveConfig() {
 
 function addNewCluster() {
     const name = prompt('请输入新集群名称:');
+
+    // 限制集群名称只允许字母、数字、下划线、点、中划线
+    if (!/^[a-zA-Z0-9_.-]+$/.test(name)) {
+        alert('集群名称只允许字母、数字、下划线、点、中划线');
+        return;
+    }
+    // 限制集群名称长度
+    if (name && name.length > 30) {
+        alert('集群名称超过最大长度限制(30字节)');
+        return;
+    }
+    // 限制集群名称不能为空
+    if (name === '') {
+        alert('集群名称不能为空');
+        return;
+    }
     if (name) {
         fetch('/api/prometheus/clusters', {
             method: 'POST',

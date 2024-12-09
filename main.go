@@ -42,8 +42,8 @@ func main() {
     r.HandleFunc("/prometheus/rules/{cluster}", app.HandleClusterRules)
     r.HandleFunc("/alertmanager/configs", app.HandleAlertConfigs)
     r.HandleFunc("/alertmanager/rules", app.HandleAlertRules)
-    r.HandleFunc("/users", app.HandleUsers)
-    r.HandleFunc("/roles", app.HandleRoles)
+    // r.HandleFunc("/users", app.HandleUsers)
+    // r.HandleFunc("/roles", app.HandleRoles)
 
     // 添加新的API路由
     r.HandleFunc("/api/prometheus/configs/{cluster}", app.HandleGetConfig).Methods("GET")

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"github.com/gorilla/mux"
 	"consul-ui/types"
+	"regexp"
 )
 
 // 处理Prometheus配置页面
@@ -75,7 +76,28 @@ func (app *Application) HandleAddCluster(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+
 	
+	// 验证集群名称长度
+	if len(cluster.Name) == 0 {
+		app.Logger.Printf("Cluster name is empty")
+		http.Error(w, "集群名称不能为空", http.StatusBadRequest)
+		return
+	}
+
+	// 检查集群名称是否只包含字母、数字、下划线、点、中划线
+	if !regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`).MatchString(cluster.Name) {
+		app.Logger.Printf("Cluster name is invalid")
+		http.Error(w, "集群名称只允许字母、数字、下划线、点、中划线", http.StatusBadRequest)
+		return
+	}
+
+	if len(cluster.Name) > 30 {
+		app.Logger.Printf("Cluster name is too long")
+		http.Error(w, "集群名称超过最大长度限制(30)", http.StatusBadRequest)
+		return
+	}
+
 	if err := app.PromService.AddCluster(cluster.Name); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to add cluster: %v", err), http.StatusInternalServerError)
 		return
@@ -172,15 +194,31 @@ func (app *Application) HandleGetRule(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(rule)
 }
 
+// 验证规则文件名
+func isValidRuleFile(ruleFile string) bool {
+	return regexp.MustCompile(`^[a-zA-Z0-9_.]+$`).MatchString(ruleFile)
+}
+
 // 保存规则
 func (app *Application) HandleSaveRule(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	clusterName := vars["cluster"]
 	ruleFile := vars["rule"]
-	
+
+	// 验证规则文件名
+	if !isValidRuleFile(ruleFile) {
+		http.Error(w, "Invalid rule file name", http.StatusBadRequest)
+		return
+	}
+
 	content, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+	// 验证规则内容
+	if string(content) == "" {
+		http.Error(w, "Rule content cannot be empty", http.StatusBadRequest)
 		return
 	}
 	

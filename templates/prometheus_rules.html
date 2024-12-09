@@ -54,25 +54,30 @@
             <div class="list-group shadow-sm" >
                 {{range .Rules}}
                 <div class="list-group-item">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0">{{.RuleFile}}</h5>
-                        <span class="badge {{if .Enable}}bg-success{{else}}bg-danger{{end}}">
-                            {{if .Enable}}启用{{else}}禁用{{end}}
-                        </span>
+                    <div class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#rule-{{.RuleFile}}" role="button" aria-expanded="false">
+                        <h5 class="mb-0">告警规则:{{.RuleFile}}</h5>
+                        <div>
+                            <span class="badge {{if .Enable}}bg-success{{else}}bg-danger{{end}} me-2">
+                                {{if .Enable}}启用{{else}}禁用{{end}}
+                            </span>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
                     </div>
-                    <pre class="rule-content mb-3">{{.Content}}</pre>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-outline-primary btn-sm" onclick="editRule('{{.RuleFile}}')">
-                            <i class="bi bi-pencil me-1"></i>编辑
-                        </button>
-                        <button class="btn btn-outline-{{if .Enable}}warning{{else}}success{{end}} btn-sm" 
-                                onclick="toggleRule('{{.RuleFile}}', '{{if .Enable}}false{{else}}true{{end}}')">
-                            <i class="bi bi-{{if .Enable}}pause{{else}}play{{end}} me-1"></i>
-                            {{if .Enable}}禁用{{else}}启用{{end}}
-                        </button>
-                        <button class="btn btn-outline-danger btn-sm" onclick="deleteRule('{{.RuleFile}}')">
-                            <i class="bi bi-trash me-1"></i>删除
-                        </button>
+                    <div class="collapse" id="rule-{{.RuleFile}}">
+                        <pre class="rule-content my-3">{{.Content}}</pre>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary btn-sm" onclick="editRule('{{.RuleFile}}')">
+                                <i class="bi bi-pencil me-1"></i>编辑
+                            </button>
+                            <button class="btn btn-outline-{{if .Enable}}warning{{else}}success{{end}} btn-sm" 
+                                    onclick="toggleRule('{{.RuleFile}}', '{{if .Enable}}false{{else}}true{{end}}')">
+                                <i class="bi bi-{{if .Enable}}pause{{else}}play{{end}} me-1"></i>
+                                {{if .Enable}}禁用{{else}}启用{{end}}
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteRule('{{.RuleFile}}')">
+                                <i class="bi bi-trash me-1"></i>删除
+                            </button>
+                        </div>
                     </div>
                 </div>
                 {{end}}
@@ -135,9 +140,20 @@ function addNewRule() {
 function saveRule() {
     const ruleFile = document.getElementById('ruleFile').value;
     const content = document.getElementById('ruleContent').value;
-    
+    // 限制规则文件名只允许字母、数字、下划线
+    if (!/^[a-zA-Z0-9_]+$/.test(ruleFile)) {
+        alert('规则文件名只允许字母、数字、下划线');
+        return;
+    }
+
     if (!ruleFile) {
         alert('请输入规则文件名');
+        return;
+    }
+
+    // 告警规则内容不能为空
+    if (!content) {
+        alert('告警规则内容不能为空');
         return;
     }
     
