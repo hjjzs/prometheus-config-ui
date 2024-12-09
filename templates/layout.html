@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prometheus & Alertmanager 管理系统</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-auto px-0 sidebar">
+                <div class="d-flex flex-column">
+                    <div class="logo p-3">
+                        <i class="bi bi-graph-up text-light fs-4 me-2"></i>
+                        <span class="fs-5">管理系统</span>
+                    </div>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="/prometheus/configs">
+                            <i class="bi bi-gear me-2"></i>Prome配置文件
+                        </a>
+                        <a class="nav-link" href="/prometheus/rules">
+                            <i class="bi bi-bell me-2"></i>Prome告警规则
+                        </a>
+                        <a class="nav-link" href="/alertmanager/configs">
+                            <i class="bi bi-gear-fill me-2"></i>Alert配置文件
+                        </a>
+                        <a class="nav-link" href="/alertmanager/rules">
+                            <i class="bi bi-bell-fill me-2"></i>Alert告警规则
+                        </a>
+                        <a class="nav-link" href="/users">
+                            <i class="bi bi-people me-2"></i>用户管理
+                        </a>
+                        <a class="nav-link" href="/roles">
+                            <i class="bi bi-shield me-2"></i>角色管理
+                        </a>
+                    </nav>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="col ps-0 main-content">
+                <header class="navbar navbar-light bg-white border-bottom">
+                    <div class="container-fluid">
+                        <span class="navbar-brand mb-0 h1">Dashboard</span>
+                        <div class="d-flex align-items-center">
+                            <span class="me-3">Super Admin</span>
+                            <img src="/static/img/non.png" alt="User Avatar" class="avatar rounded-circle">
+                        </div>
+                    </div>
+                </header>
+                
+                <div class="content p-4" style="height: calc(100vh - 60px); overflow-y: auto;">
+                    {{if eq .Content "users"}}
+                        {{template "users" .}}
+                    {{else if eq .Content "roles"}}
+                        {{template "roles" .}}
+                    {{else if eq .Content "prometheus-configs"}}
+                        {{template "prometheus-configs" .}}
+                    {{else if eq .Content "prometheus-rules"}}
+                        {{template "prometheus-rules" .}}
+                    {{else if eq .Content "alertmanager-configs"}}
+                        {{template "alertmanager-configs" .}}
+                    {{else if eq .Content "alertmanager-rules"}}
+                        {{template "alertmanager-rules" .}}
+                    {{else}}
+                        <h2>欢迎使用Prometheus & Alertmanager 管理系统</h2>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

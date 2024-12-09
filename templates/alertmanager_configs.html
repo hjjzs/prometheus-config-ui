@@ -1,0 +1,18 @@
+{{define "alertmanager-configs"}}
+<div class="alert-configs">
+    <h2>Alertmanager 配置文件列表</h2>
+    <div class="config-list">
+        {{range .Configs}}
+        <div class="config-item">
+            <h3>{{.Name}}</h3>
+            <pre class="config-content">{{.Content}}</pre>
+            <div class="actions">
+                <button onclick="editAlertConfig('{{.Name}}')">编辑</button>
+                <button onclick="deleteAlertConfig('{{.Name}}')">删除</button>
+            </div>
+        </div>
+        {{end}}
+        <button class="add-btn" onclick="addNewAlertConfig()">添加新配置</button>
+    </div>
+</div>
+{{end}} 

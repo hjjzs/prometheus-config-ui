@@ -1,0 +1,22 @@
+{{define "prometheus-rules"}}
+<div class="prom-rules">
+    <h2>Prometheus 告警规则列表</h2>
+    <div class="rules-list">
+        {{range .Rules}}
+        <div class="rule-item">
+            <h3>{{.RuleFile}}</h3>
+            <div class="rule-status">
+                状态: {{if .Enable}}启用{{else}}禁用{{end}}
+            </div>
+            <pre class="rule-content">{{.Content}}</pre>
+            <div class="actions">
+                <button onclick="editRule('{{.RuleFile}}')">编辑</button>
+                <button onclick="toggleRule('{{.RuleFile}}')">{{if .Enable}}禁用{{else}}启用{{end}}</button>
+                <button onclick="deleteRule('{{.RuleFile}}')">删除</button>
+            </div>
+        </div>
+        {{end}}
+        <button class="add-btn" onclick="addNewRule()">添加新规则</button>
+    </div>
+</div>
+{{end}} 

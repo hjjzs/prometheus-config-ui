@@ -1,0 +1,25 @@
+{{define "roles"}}
+<div class="roles">
+    <h2>角色管理</h2>
+    <div class="roles-list">
+        {{range .Roles}}
+        <div class="role-item">
+            <h3>{{.Name}}</h3>
+            <div class="permissions">
+                <h4>权限列表:</h4>
+                <ul>
+                    {{range .Permissions}}
+                    <li>{{.}}</li>
+                    {{end}}
+                </ul>
+            </div>
+            <div class="actions">
+                <button onclick="editRole('{{.Name}}')">编辑</button>
+                <button onclick="deleteRole('{{.Name}}')">删除</button>
+            </div>
+        </div>
+        {{end}}
+        <button class="add-btn" onclick="addNewRole()">添加新角色</button>
+    </div>
+</div>
+{{end}} 
