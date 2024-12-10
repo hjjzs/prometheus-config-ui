@@ -84,24 +84,7 @@ alertmanager key 设计：
 
 
 
-
-
-
-
-
-
-
-<!-- ### 用户管理模块设计
-- 用户管理：添加用户、删除用户、修改用户、用户列表
-- 在service目录下面创建consul_service.go 文件，实现consul操作
-- 在user_handler.go中实现用户管理功能 -->
-
-
-
-
-
-
-<!-- ### agent.sh 设计
+### agent.sh 设计
 变量：
 - PROMETHEUS_CLUSTER_NAME: 主机名+ip
 - ALERTMANAGER_CLUSTER_NAME: 主机名+ip
@@ -112,10 +95,19 @@ alertmanager key 设计：
 - ALERTMANAGER_RULES_PATH: alertmanager 告警规则路径 
 - ALERTMANAGER_CONFIG_PATH: alertmanager 配置文件路径
 
+输出脚本到项目agnet目录下面
+
 实现功能：
-- 扫描prometheus 告警规则目录，获取所有告警规则文件，并保存到consul中
+- 在内存中建立consul key 的index 缓存，用于判断consul key 是否发生变化
 - watch consul key: `/prom/cluster/{cluster_name}/`
-- 根据不同的key路由到不同的处理逻辑 -->
+- 使用类型的curl 命令：RESPONSE=$(curl -H "X-Consul-Token: ${TOKEN}" -s "${CONSUL_URL}/${KEY}?index=${INDEX}&wait=5m&recurse")
+- 根据不同的key路由到不同的处理逻辑
+- prometheus 相关处理逻辑（根据index 判断是否发生变化,如果cache 中没有index，则更新cache并默认key发生变化）： 
+1、如果key`/prom/cluster/{cluster_name}/config` 发生变化，则更新prometheus 配置文件
+2、如果key`/prom/cluster/{cluster_name}/rules/{rules_file}` 发生变化，则更新prometheus 告警规则
+3、如果key`/prom/cluster/{cluster_name}/rules/{rules_file}/enable` 发生变化，则更新prometheus 告警规则启用状态
+
+
 
 
 
