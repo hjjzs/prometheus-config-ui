@@ -1,4 +1,66 @@
 {{define "prometheus-configs"}}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- 添加 Monaco Editor 的样式 -->
+<link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.min.css">
+
+<style>
+#monaco-editor {
+    width: 100%;
+    height: 500px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+
+
+/* 添加全屏样式 */
+.fullscreen {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999;
+}
+
+/* 全屏按钮样式 */
+.fullscreen-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    background: rgba(0,0,0,0.6);
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.fullscreen-btn:hover {
+    background: rgba(0,0,0,0.8);
+}
+
+.modal.fullscreen-modal .modal-dialog {
+    max-width: 100%;
+    margin: 0;
+    height: 100%;
+}
+
+.modal.fullscreen-modal .modal-content {
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+}
+
+.modal.fullscreen-modal .modal-body {
+    position: relative;
+    padding: 0;
+}
+</style>
+
 <div class="prom-configs">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="h3 mb-0">Prometheus 配置文件管理</h2>
@@ -43,7 +105,12 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <textarea id="configContent" class="form-control font-monospace" rows="20" style="resize: vertical;"></textarea>
+                    <div style="position: relative;">
+                        <button type="button" class="fullscreen-btn" onclick="toggleFullscreen()">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                        <div id="monaco-editor"></div>
+                    </div>
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
@@ -58,21 +125,102 @@
     </div>
 </div>
 
+<!-- 添加 Monaco Editor 的脚本 -->
+<script>var require = { paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs' } };</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/loader.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.nls.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.min.js"></script>
+
 <script>
 let currentCluster = '';
+let editor;
+let isFullscreen = false;
+
+// 添加全屏切换函数
+function toggleFullscreen() {
+    const modal = document.getElementById('configModal');
+    const editorContainer = document.getElementById('monaco-editor');
+    const btn = document.querySelector('.fullscreen-btn i');
+    
+    isFullscreen = !isFullscreen;
+    
+    if (isFullscreen) {
+        modal.classList.add('fullscreen-modal');
+        editorContainer.classList.add('fullscreen');
+        btn.classList.remove('bi-arrows-fullscreen');
+        btn.classList.add('bi-fullscreen-exit');
+    } else {
+        modal.classList.remove('fullscreen-modal');
+        editorContainer.classList.remove('fullscreen');
+        btn.classList.remove('bi-fullscreen-exit');
+        btn.classList.add('bi-arrows-fullscreen');
+    }
+    
+    // 重新计算编辑器大小
+    editor.layout();
+}
+
+// 初始化 Monaco Editor
+require(['vs/editor/editor.main'], function() {
+    // 创建编辑器实例
+    editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+        value: '',
+        language: 'yaml',
+        theme: 'vs-dark',
+        minimap: { enabled: false },
+        automaticLayout: true,
+        fontSize: 14,
+        tabSize: 2,
+        renderWhitespace: 'all',
+        scrollBeyondLastLine: false,
+        // 禁用编辑器的 ESC 键处理
+        keyboard: {
+            bindKey: function(e) {
+                // 如果是 ESC 键且处于全屏状态，阻止默认行为
+                if (e.keyCode === 27 && isFullscreen) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return true;
+                }
+                return false;
+            }
+        }
+    });
+
+    // 监听模态框显示事件，刷新编辑器
+    document.getElementById('configModal').addEventListener('shown.bs.modal', function () {
+        editor.layout();
+    });
+
+    // 监听 ESC 键退出全屏
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isFullscreen) {
+            // 阻止事件冒泡，防止触发 modal 的关闭
+            e.stopPropagation();
+            toggleFullscreen();
+        }
+    }, true); // 使用捕获阶段处理事件
+
+    // 阻止 modal 响应 ESC 键
+    document.getElementById('configModal').addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isFullscreen) {
+            e.stopPropagation();
+        }
+    }, true);
+});
 
 function editConfig(clusterName) {
     currentCluster = clusterName;
     fetch(`/api/prometheus/configs/${clusterName}`)
         .then(response => response.text())
         .then(config => {
-            document.getElementById('configContent').value = config;
+            editor.setValue(config);
             new bootstrap.Modal(document.getElementById('configModal')).show();
         });
 }
 
 function saveConfig() {
-    const config = document.getElementById('configContent').value;
+    const config = editor.getValue();
     fetch(`/api/prometheus/configs/${currentCluster}`, {
         method: 'POST',
         headers: {
@@ -102,7 +250,7 @@ function addNewCluster() {
         alert('集群名称只允许字母、数字、下划线、点、中划线');
         return;
     }
-    // 限制集群名称长度
+    // ���制集群名称长度
     if (name && name.length > 30) {
         alert('集群名称超过最大长度限制(30字节)');
         return;

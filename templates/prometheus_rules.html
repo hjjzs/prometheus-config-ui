@@ -36,6 +36,66 @@
 {{end}}
 
 {{define "prometheus-cluster-rules"}}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.min.css">
+
+<style>
+#monaco-editor {
+    width: 100%;
+    height: 500px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+
+
+/* 添加全屏样式 */
+.fullscreen {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999;
+}
+
+/* 全屏按钮样式 */
+.fullscreen-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    background: rgba(0,0,0,0.6);
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.fullscreen-btn:hover {
+    background: rgba(0,0,0,0.8);
+}
+
+.modal.fullscreen-modal .modal-dialog {
+    max-width: 100%;
+    margin: 0;
+    height: 100%;
+}
+
+.modal.fullscreen-modal .modal-content {
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+}
+
+.modal.fullscreen-modal .modal-body {
+    position: relative;
+    padding: 0;
+}
+</style>
+
 <div class="prom-rules">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -51,7 +111,7 @@
 
     <div class="rules-list">
         {{if .Rules}}
-            <div class="list-group shadow-sm" >
+            <div class="list-group shadow-sm">
                 {{range .Rules}}
                 <div class="list-group-item">
                     <div class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#rule-{{.RuleFile}}" role="button" aria-expanded="false">
@@ -100,7 +160,12 @@
                 </div>
                 <div class="modal-body">
                     <input type="text" id="ruleFile" class="form-control mb-3" placeholder="规则文件名">
-                    <textarea id="ruleContent" class="form-control font-monospace" rows="15"></textarea>
+                    <div style="position: relative; flex: 1; display: flex; flex-direction: column;">
+                        <button type="button" class="fullscreen-btn" onclick="toggleFullscreen()">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                        <div id="monaco-editor"></div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -111,13 +176,117 @@
     </div>
 </div>
 
+<script>var require = { paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs' } };</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/loader.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.nls.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.min.js"></script>
+
 <script>
 let currentCluster = '{{.Cluster}}';
 let ruleModal;
+let editor;
+let isFullscreen = false;
+
+// 添加全屏切换函数
+function toggleFullscreen() {
+    const modal = document.getElementById('ruleModal');
+    const editorContainer = document.getElementById('monaco-editor');
+    const btn = document.querySelector('.fullscreen-btn i');
+    
+    isFullscreen = !isFullscreen;
+    
+    if (isFullscreen) {
+        modal.classList.add('fullscreen-modal');
+        editorContainer.classList.add('fullscreen');
+        btn.classList.remove('bi-arrows-fullscreen');
+        btn.classList.add('bi-fullscreen-exit');
+    } else {
+        modal.classList.remove('fullscreen-modal');
+        editorContainer.classList.remove('fullscreen');
+        btn.classList.remove('bi-fullscreen-exit');
+        btn.classList.add('bi-arrows-fullscreen');
+    }
+    
+    // 重新计算编辑器大小
+    editor.layout();
+}
+
+// 初始化 Monaco Editor
+require(['vs/editor/editor.main'], function() {
+    // 创建编辑器实例
+    editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+        value: '',
+        language: 'yaml',
+        theme: 'vs-dark',
+        minimap: { enabled: false },
+        automaticLayout: true,
+        fontSize: 14,
+        tabSize: 2,
+        renderWhitespace: 'all',
+        scrollBeyondLastLine: false,
+        // 禁用编辑器的 ESC 键处理
+        keyboard: {
+            bindKey: function(e) {
+                // 如果是 ESC 键且处于全屏状态，阻止默认行为
+                if (e.keyCode === 27 && isFullscreen) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return true;
+                }
+                return false;
+            }
+        }
+    });
+
+    // 监听模态框显示事件，刷新编辑器
+    document.getElementById('ruleModal').addEventListener('shown.bs.modal', function () {
+        editor.layout();
+    });
+
+    // 监听 ESC 键退出全屏
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isFullscreen) {
+            // 阻止事件冒泡，防止触发 modal 的关闭
+            e.stopPropagation();
+            toggleFullscreen();
+        }
+    }, true); // 使用捕获阶段处理事件
+
+    // 阻止 modal 响应 ESC 键
+    document.getElementById('ruleModal').addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isFullscreen) {
+            e.stopPropagation();
+        }
+    }, true);
+});
 
 document.addEventListener('DOMContentLoaded', function() {
+    // 确保 bootstrap 已加载
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap not loaded');
+        return;
+    }
     ruleModal = new bootstrap.Modal(document.getElementById('ruleModal'));
 });
+
+function addNewRule() {
+    document.getElementById('ruleFile').value = '';
+    document.getElementById('ruleFile').disabled = false;
+    editor.setValue(
+`groups:
+  - name: example
+    rules:
+    - alert: HighErrorRate
+      expr: |
+        rate(http_requests_total{status=~"5.."}[5m]) > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: High Error Rate
+        description: "Error rate is too high"`);
+    ruleModal.show();
+}
 
 function editRule(ruleFile) {
     fetch(`/api/prometheus/rules/${currentCluster}/${ruleFile}`)
@@ -125,22 +294,16 @@ function editRule(ruleFile) {
         .then(rule => {
             document.getElementById('ruleFile').value = rule.RuleFile;
             document.getElementById('ruleFile').disabled = true;
-            document.getElementById('ruleContent').value = rule.Content;
+            editor.setValue(rule.Content);
             ruleModal.show();
-        });
-}
-
-function addNewRule() {
-    document.getElementById('ruleFile').value = '';
-    document.getElementById('ruleFile').disabled = false;
-    document.getElementById('ruleContent').value = '';
-    ruleModal.show();
+        })
+        .catch(error => alert('加载规则失败: ' + error.message));
 }
 
 function saveRule() {
     const ruleFile = document.getElementById('ruleFile').value;
-    const content = document.getElementById('ruleContent').value;
-    // 限制规则文件名只允许字母、数字、下划线
+    const content = editor.getValue();
+    
     if (!/^[a-zA-Z0-9_]+$/.test(ruleFile)) {
         alert('规则文件名只允许字母、数字、下划线');
         return;
@@ -151,7 +314,6 @@ function saveRule() {
         return;
     }
 
-    // 告警规则内容不能为空
     if (!content) {
         alert('告警规则内容不能为空');
         return;
@@ -173,9 +335,7 @@ function saveRule() {
         ruleModal.hide();
         window.location.reload();
     })
-    .catch(error => {
-        alert('保存规则失败: ' + error.message);
-    });
+    .catch(error => alert('保存规则失败: ' + error.message));
 }
 
 function toggleRule(ruleFile, enableStr) {
