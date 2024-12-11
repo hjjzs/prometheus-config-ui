@@ -118,7 +118,7 @@ watch_rules() {
         
         # 检查响应是否为空
         if [ -z "$RESPONSE" ] || [ "$RESPONSE" = "null" ]; then
-            log "[Rules] 无法获���consul响应或路径不存在"
+            log "[Rules] 无法获取consul响应或路径不存在"
             sleep 5
             continue
         fi
