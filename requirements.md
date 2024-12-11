@@ -31,7 +31,12 @@ prometheus key 设计：
 - `/prom/cluster/{cluster_name}/rules/{rules_file}/enable` # 同路径下的rule.yml告警规则文件是否启用
 
 alertmanager key 设计：
-- 待定
+- cluster: `/alert/cluster/{cluster_name}` # 集群名称,一个alertmanager为一个集群
+- config: `/alert/cluster/{cluster_name}/config` # 配置文件
+- tmpl: `/alert/cluster/{cluster_name}/tmpl/{tmpl_file}` # 一个tmpl_file 对应一个告警模板文件
+- `/alert/cluster/{cluster_name}/tmpl/{tmpl_file}/tmpl` # 告警模板文件内容
+- `/alert/cluster/{cluster_name}/tmpl/{tmpl_file}/enable` # 同路径下的tmpl_file.tmpl告警模板文件是否启用
+
 
 ### consul ui 设计
 使用go template 渲染页面，consul-client 获取consul数据，并展示
@@ -39,12 +44,12 @@ alertmanager key 设计：
 - prometheus 配置文件管理
 - prometheus 告警规则管理
 - alertmanager 配置文件管理
-- alertmanager 告警规则管理
+- alertmanager 告警模板管理
 - 用户管理（consul token） 一个consul token 对应一个用户
 - 角色管理（consul token 权限）
 
 布局:
-- 菜单（左侧）：prometheus 配置文件管理、prometheus 告警规则管理、alertmanager 配置文件管理、alertmanager 告警规则管理、用户管理（consul token） 一个consul token 对应一个用户、角色管理（consul token 权限）
+- 菜单（左侧）：prometheus 配置文件管理、prometheus 告警规则管理、alertmanager 配置文件管理、alertmanager 告警模板管理、用户管理（consul token） 一个consul token 对应一个用户、角色管理（consul token 权限）
 - 内容（右侧）：显示菜单对应的页面
 - 右侧菜单可以折叠
 - 可以使用bootstrap 框架
@@ -81,6 +86,31 @@ alertmanager key 设计：
 2、go 实现
 - 在prom_handlers.go 中实现,ui中需要的操作逻辑。
 - 在service目录下实现prom_service.go实现consul 操作
+
+
+### alertmanager 配置文件管理
+1、ui 页面
+1.1对应templates/alertmanager_configs.html
+- 点击菜单"alertmanager配置文件管理"时展示alertmanager 节点列表
+- 节点列表有一个操作按钮"编辑"，点击"编辑"按钮，弹出alertmanager 配置文件编辑弹窗
+- 弹窗中展示alertmanager 配置文件内容
+- 使用monaco editor 编辑器
+- 弹窗中有一个"保存"按钮，点击"保存"按钮，保存alertmanager 配置文件
+
+1.2 对应templates/alertmanager_tmpls.html
+- 点击菜单"alertmanager告警模板管理"时展示alertmanager 节点列表
+- 节点列表有一个操作按钮"编辑"，点击"编辑"按钮，弹出alertmanager 告警模板编辑弹窗
+- 弹窗中展示alertmanager 告警模板内容
+- 使用monaco editor 编辑器
+- 弹窗中有一个"保存"按钮，点击"保存"按钮，保存alertmanager 告警模板
+- 告警模板列表有一个操作按钮"启用"，点击"启用"按钮，启用该告警模板
+- 告警模板列表有一个操作按钮"禁用"，点击"禁用"按钮，禁用该告警模板
+- 告警模板列表有一个操作按钮"删除"，点击"删除"按钮，删除该告警模板
+- 告警模板列表有一个操作按钮"添加"，点击"添加"按钮，弹出alertmanager 告警模板编辑弹窗
+2、go 实现
+- 在alert_handlers.go 中实现,ui中需要的操作逻辑。
+- 在service目录下实现alert_service.go实现consul 操作
+
 
 
 

@@ -41,7 +41,7 @@ func main() {
     r.HandleFunc("/prometheus/rules", app.HandlePromRules)
     r.HandleFunc("/prometheus/rules/{cluster}", app.HandleClusterRules)
     r.HandleFunc("/alertmanager/configs", app.HandleAlertConfigs)
-    r.HandleFunc("/alertmanager/rules", app.HandleAlertRules)
+    r.HandleFunc("/alertmanager/tmpls", app.HandleAlertTmpl)
     // r.HandleFunc("/users", app.HandleUsers)
     // r.HandleFunc("/roles", app.HandleRoles)
 
@@ -55,6 +55,16 @@ func main() {
     r.HandleFunc("/api/prometheus/rules/{cluster}/{rule}", app.HandleSaveRule).Methods("POST")
     r.HandleFunc("/api/prometheus/rules/{cluster}/{rule}", app.HandleDeleteRule).Methods("DELETE")
     r.HandleFunc("/api/prometheus/rules/{cluster}/{rule}/toggle", app.HandleToggleRule).Methods("POST")
+
+    // Alertmanager API路由
+    r.HandleFunc("/api/alertmanager/configs/{cluster}", app.HandleGetAlertConfig).Methods("GET")
+    r.HandleFunc("/api/alertmanager/configs/{cluster}", app.HandleSaveAlertConfig).Methods("POST")
+    r.HandleFunc("/api/alertmanager/clusters", app.HandleAddAlertCluster).Methods("POST")
+    r.HandleFunc("/api/alertmanager/clusters/{cluster}", app.HandleDeleteAlertCluster).Methods("DELETE")
+    // r.HandleFunc("/api/alertmanager/tmpl/{cluster}/{tmpl}", app.HandleGetAlertTmpl).Methods("GET")
+    // r.HandleFunc("/api/alertmanager/tmpl/{cluster}/{tmpl}", app.HandleSaveAlertTmpl).Methods("POST")
+    // r.HandleFunc("/api/alertmanager/tmpl/{cluster}/{tmpl}", app.HandleDeleteAlertTmpl).Methods("DELETE")
+    // r.HandleFunc("/api/alertmanager/tmpl/{cluster}/{tmpl}/toggle", app.HandleToggleAlertTmpl).Methods("POST")
 
     // 优雅退出程序
     srv := &http.Server{

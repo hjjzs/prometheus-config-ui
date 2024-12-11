@@ -11,6 +11,7 @@ import (
 type Application struct {
     Templates *template.Template
     PromService *service.PromService
+    AlertService *service.AlertService
     Logger *log.Logger
 }
 
@@ -22,9 +23,11 @@ func NewApplication(templates *template.Template) *Application {
         panic(err)
     }
     promService := service.NewPromService(consulService)
+    alertService := service.NewAlertService(consulService)
     return &Application{
         Templates: templates,
         PromService: promService,
+        AlertService: alertService,
         Logger: log.New(os.Stdout, "consul-ui: ", log.LstdFlags),
     }
 }

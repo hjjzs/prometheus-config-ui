@@ -1,18 +1,235 @@
 {{define "alertmanager-configs"}}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.min.css">
+
+<style>
+    #monaco-editor {
+        width: 100%;
+        height: 400px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    
+    
+    /* 添加全屏样式 */
+    .fullscreen {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 9999;
+    }
+    
+    /* 全屏按钮样式 */
+    .fullscreen-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: rgba(0,0,0,0.6);
+        border: none;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    .fullscreen-btn:hover {
+        background: rgba(0,0,0,0.8);
+    }
+    
+    .modal.fullscreen-modal .modal-dialog {
+        max-width: 100%;
+        margin: 0;
+        height: 100%;
+    }
+    
+    .modal.fullscreen-modal .modal-content {
+        height: 100%;
+        border: 0;
+        border-radius: 0;
+    }
+    
+    .modal.fullscreen-modal .modal-body {
+        position: relative;
+        padding: 0;
+    }
+    </style>
+
 <div class="alert-configs">
-    <h2>Alertmanager 配置文件列表</h2>
-    <div class="config-list">
-        {{range .Configs}}
-        <div class="config-item">
-            <h3>{{.Name}}</h3>
-            <pre class="config-content">{{.Content}}</pre>
-            <div class="actions">
-                <button onclick="editAlertConfig('{{.Name}}')">编辑</button>
-                <button onclick="deleteAlertConfig('{{.Name}}')">删除</button>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0">Alertmanager 配置文件管理</h2>
+        <button class="btn btn-primary" onclick="addNewCluster()">
+            <i class="bi bi-plus-lg me-2"></i>添加新集群
+        </button>
+    </div>
+
+    <div class="clusters-list">
+        {{if .Clusters}}
+            <div class="list-group shadow-sm">
+                {{range .Clusters}}
+                <div class="list-group-item d-flex justify-content-between align-items-center hover-shadow">
+                    <h5 class="mb-0 text-primary">{{.Name}}</h5>
+                    <div class="d-flex gap-3">
+                        <button class="btn btn-outline-primary btn-sm" onclick="editConfig('{{.Name}}')">
+                            <i class="bi bi-pencil me-1"></i>编辑配置
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteCluster('{{.Name}}')">
+                            <i class="bi bi-trash me-1"></i>删除集群
+                        </button>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        {{else}}
+            <div class="alert alert-info text-center py-5">
+                <i class="bi bi-info-circle fs-4 d-block mb-3"></i>
+                暂无Alertmanager集群
+            </div>
+        {{end}}
+    </div>
+
+    <!-- 编辑配置弹窗 -->
+    <div class="modal fade" id="configModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑Alertmanager配置</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div style="position: relative;">
+                        <button type="button" class="fullscreen-btn" onclick="toggleFullscreen()">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                        <div id="monaco-editor"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveConfig()">保存</button>
+                </div>
             </div>
         </div>
-        {{end}}
-        <button class="add-btn" onclick="addNewAlertConfig()">添加新配置</button>
     </div>
 </div>
+
+
+<!-- 添加 Monaco Editor 的脚本 -->
+<script>var require = { paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs' } };</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/loader.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.nls.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.min.js"></script>
+
+
+<script>
+let editor;
+let currentCluster;
+let configModal;
+let isFullscreen = false;
+
+// 初始化 Monaco Editor
+require(['vs/editor/editor.main'], function() {
+    editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+        value: '',
+        language: 'yaml',
+        theme: 'vs-dark',
+        minimap: { enabled: false },
+        automaticLayout: true,
+        fontSize: 14,
+        tabSize: 2,
+    });
+
+    configModal = new bootstrap.Modal(document.getElementById('configModal'));
+});
+
+function editConfig(clusterName) {
+    currentCluster = clusterName;
+    fetch(`/api/alertmanager/configs/${clusterName}`)
+        .then(response => response.text())
+        .then(config => {
+            editor.setValue(config);
+            configModal.show();
+        });
+}
+
+function saveConfig() {
+    const config = editor.getValue();
+    fetch(`/api/alertmanager/configs/${currentCluster}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'text/plain',
+        },
+        body: config,
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(text);
+            });
+        }
+        configModal.hide();
+        window.location.reload();
+    })
+    .catch(error => {
+        alert('保存配置失败: ' + error.message);
+    });
+}
+
+function addNewCluster() {
+    const name = prompt('请输入新集群名称:');
+    if (!name) return;
+    
+    if (!/^[a-zA-Z0-9_.-]+$/.test(name)) {
+        alert('集群名称只允许字母、数字、下划线、点、中划线');
+        return;
+    }
+
+    if (name.length > 30) {
+        alert('集群名称超过最大长度限制(30字节)');
+        return;
+    }
+
+    fetch('/api/alertmanager/clusters', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name }),
+    }).then(() => window.location.reload());
+}
+
+function deleteCluster(name) {
+    if (confirm(`确定要删除集群 ${name} 吗?`)) {
+        fetch(`/api/alertmanager/clusters/${name}`, {
+            method: 'DELETE',
+        }).then(() => window.location.reload());
+    }
+}
+
+function toggleFullscreen() {
+    const modal = document.getElementById('configModal');
+    const editorContainer = document.getElementById('monaco-editor');
+    const btn = document.querySelector('.fullscreen-btn i');
+    
+    isFullscreen = !isFullscreen;
+    
+    if (isFullscreen) {
+        modal.classList.add('fullscreen-modal');
+        editorContainer.classList.add('fullscreen');
+        btn.classList.remove('bi-arrows-fullscreen');
+        btn.classList.add('bi-fullscreen-exit');
+    } else {
+        modal.classList.remove('fullscreen-modal');
+        editorContainer.classList.remove('fullscreen');
+        btn.classList.remove('bi-fullscreen-exit');
+        btn.classList.add('bi-arrows-fullscreen');
+    }
+    
+    editor.layout();
+}
+</script>
 {{end}} 

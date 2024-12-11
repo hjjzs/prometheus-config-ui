@@ -1,6 +1,6 @@
-{{define "alertmanager-rules"}}
+{{define "alertmanager-tmpls"}}
 <div class="alert-rules">
-    <h2>Alertmanager 告警规则列表</h2>
+    <h2>Alertmanager 告警模板列表</h2>
     <div class="rules-list">
         {{range .Rules}}
         <div class="rule-item">
@@ -12,7 +12,7 @@
             </div>
         </div>
         {{end}}
-        <button class="add-btn" onclick="addNewAlertRule()">添加新规则</button>
+        <button class="add-btn" onclick="addNewAlertRule()">添加新模板</button>
     </div>
 </div>
 {{end}} 
