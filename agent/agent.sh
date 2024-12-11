@@ -9,7 +9,7 @@ CONSUL_TOKEN=${CONSUL_TOKEN:-"5e7f0c19-73ac-6023-c8ba-eb77988cd641"}
 PROMETHEUS_CONFIG_PATH=${PROMETHEUS_CONFIG_PATH:-"/tmp/prometheus/prometheus/etc/prometheus.yml"}
 PROMETHEUS_RULES_DIR_PATH=${PROMETHEUS_RULES_DIR_PATH:-"/tmp/prometheus/prometheus/etc/rules"}
 ALERTMANAGER_CONFIG_PATH=${ALERTMANAGER_CONFIG_PATH:-"/etc/alertmanager/alertmanager.yml"}
-ALERTMANAGER_RULES_PATH=${ALERTMANAGER_RULES_PATH:-"/etc/alertmanager/rules"}
+ALERTMANAGER_TMPL_PATH=${ALERTMANAGER_TMPL_PATH:-"/etc/alertmanager/tmpl"}
 
 # 进程ID数组
 declare -a CHILD_PIDS

@@ -122,23 +122,41 @@ alertmanager key 设计：
 - CONSUL_TOKEN: consul token
 - PROMETHEUS_CONFIG_PATH: prometheus 配置文件路径
 - PROMETHEUS_RULES_DIR_PATH: prometheus 告警规则目录路径
-- ALERTMANAGER_RULES_PATH: alertmanager 告警规则路径 
+- ALERTMANAGER_TMPL_PATH: alertmanager 告警模板路径 
 - ALERTMANAGER_CONFIG_PATH: alertmanager 配置文件路径
 
 输出脚本到项目agnet目录下面
 
-实现功能：
-- 在内存中建立consul key 的index 缓存，用于判断consul key 是否发生变化
-- watch consul key: `/prom/cluster/{cluster_name}/`
-- 使用类型的curl 命令：RESPONSE=$(curl -H "X-Consul-Token: ${TOKEN}" -s "${CONSUL_URL}/${KEY}?index=${INDEX}&wait=5m&recurse")
-- 根据不同的key路由到不同的处理逻辑
-- prometheus 相关处理逻辑（根据index 判断是否发生变化,如果cache 中没有index，则更新cache并默认key发生变化）： 
-1、如果key`/prom/cluster/{cluster_name}/config` 发生变化，则更新prometheus 配置文件
-2、如果key`/prom/cluster/{cluster_name}/rules/{rules_file}` 发生变化，则更新prometheus 告警规则
-3、如果key`/prom/cluster/{cluster_name}/rules/{rules_file}/enable` 发生变化，则更新prometheus 告警规则启用状态
+prometheus 实现功能：
+- 使用declare -A last_modify_indices 在内存中建立consul key 的ModifyIndex缓存,用于判断key是否变化
+- 分别实现watch_config和watch_rules两个函数监听配置和规则变化
+- watch_config函数:
+  1. 监听/prom/cluster/{cluster_name}/config路径
+  2. 使用curl长轮询等待变更:curl -H "X-Consul-Token: $CONSUL_TOKEN" "$CONSUL_ADDR/v1/kv/$cluster_path/config?index=${index}&wait=5m"
+  3. 检测到变化时更新prometheus.yml配置文件并重载
+- watch_rules函数:
+  1. 监听/prom/cluster/{cluster_name}/rules路径
+  2. 使用curl长轮询递归监听:curl -H "X-Consul-Token: $CONSUL_TOKEN" "$CONSUL_ADDR/v1/kv/$rules_path?index=${index}&wait=5m&recurse"
+  3. 根据key类型路由到不同处理函数:
+     - rules/{rule_file}/rules: 更新规则文件内容
+     - rules/{rule_file}/enable: 更新规则启用状态
+  4. 通过比较ModifyIndex与缓存判断是否需要处理
+  5. 处理完成后更新缓存的ModifyIndex
 
 
-
+alertmanager 实现功能：
+- 使用declare -A last_modify_indices 在内存中建立consul key 的ModifyIndex缓存,用于判断key是否变化
+- 分别实现watch_config和watch_tmpl两个函数监听配置和模板变化
+- watch_alert_config函数:
+  1. 监听/alert/cluster/{cluster_name}/config路径
+  2. 使用curl长轮询等待变更:curl -H "X-Consul-Token: $CONSUL_TOKEN" "$CONSUL_ADDR/v1/kv/$cluster_path/config?index=${index}&wait=5m"
+  3. 检测到变化时更新alertmanager.yml配置文件
+- watch_tmpl函数:
+  1. 监听/alert/cluster/{cluster_name}/tmpl路径
+  2. 使用curl长轮询递归监听:curl -H "X-Consul-Token: $CONSUL_TOKEN" "$CONSUL_ADDR/v1/kv/$tmpl_path?index=${index}&wait=5m&recurse"
+  3. 根据key类型路由到不同处理函数:
+     - tmpl/{tmpl_file}/tmpl: 更新模板文件内容
+     - tmpl/{tmpl_file}/enable: 更新模板启用状态
 
 
 
