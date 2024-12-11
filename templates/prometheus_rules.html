@@ -151,25 +151,25 @@
     </div>
 
     <!-- 编辑规则弹窗 -->
-    <div class="modal fade" id="ruleModal" tabindex="-1">
+    <div class="modal fade" id="ruleModal" tabindex="-1" aria-labelledby="ruleModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">编辑告警规则</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="ruleModalLabel">编辑告警规则</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" id="closeButton"></button>
                 </div>
                 <div class="modal-body">
                     <input type="text" id="ruleFile" class="form-control mb-3" placeholder="规则文件名">
                     <div style="position: relative; flex: 1; display: flex; flex-direction: column;">
-                        <button type="button" class="fullscreen-btn" onclick="toggleFullscreen()">
+                        <button type="button" class="fullscreen-btn" onclick="toggleFullscreen()" id="fullscreenButton">
                             <i class="bi bi-arrows-fullscreen"></i>
                         </button>
                         <div id="monaco-editor"></div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="saveRule()">保存</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelButton">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveRule()" id="saveButton">保存</button>
                 </div>
             </div>
         </div>
@@ -200,11 +200,13 @@ function toggleFullscreen() {
         editorContainer.classList.add('fullscreen');
         btn.classList.remove('bi-arrows-fullscreen');
         btn.classList.add('bi-fullscreen-exit');
+        editorContainer.setAttribute('aria-expanded', 'true');
     } else {
         modal.classList.remove('fullscreen-modal');
         editorContainer.classList.remove('fullscreen');
         btn.classList.remove('bi-fullscreen-exit');
         btn.classList.add('bi-arrows-fullscreen');
+        editorContainer.setAttribute('aria-expanded', 'false');
     }
     
     // 重新计算编辑器大小
@@ -261,12 +263,30 @@ require(['vs/editor/editor.main'], function() {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-    // 确保 bootstrap 已加载
     if (typeof bootstrap === 'undefined') {
         console.error('Bootstrap not loaded');
         return;
     }
-    ruleModal = new bootstrap.Modal(document.getElementById('ruleModal'));
+    
+    const modal = document.getElementById('ruleModal');
+    ruleModal = new bootstrap.Modal(modal);
+    
+    // 在模态框隐藏之前,将焦点移到一个安全的元素
+    modal.addEventListener('hide.bs.modal', function() {
+        // 将焦点移到body
+        document.body.focus();
+    });
+    
+    // 在模态框完全隐藏后重置状态
+    modal.addEventListener('hidden.bs.modal', function() {
+        if (isFullscreen) {
+            toggleFullscreen();
+        }
+        // 清除编辑器内容
+        editor.setValue('');
+        // 重置文件名输入
+        document.getElementById('ruleFile').value = '';
+    });
 });
 
 function addNewRule() {
