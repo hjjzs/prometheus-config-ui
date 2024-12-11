@@ -113,4 +113,107 @@ func getAlertClusterName(key string) string {
         return parts[2]
     }
     return ""
-} 
+}
+
+// 获取模板列表
+func (s *AlertService) ListTemplates(clusterName string) ([]types.Rule, error) {
+    prefix := fmt.Sprintf("alert/cluster/%s/tmpl/", clusterName)
+    pairs, _, err := s.consul.Client.KV().List(prefix, nil)
+    if err != nil {
+        return nil, fmt.Errorf("failed to list templates: %v", err)
+    }
+
+    tmplMap := make(map[string]types.Rule)
+    for _, pair := range pairs {
+        parts := strings.Split(pair.Key, "/")
+        if len(parts) < 5 {
+            continue
+        }
+        
+        tmplFile := parts[4]
+        if strings.HasSuffix(pair.Key, "/tmpl") {
+            rule, exists := tmplMap[tmplFile]
+            if !exists {
+                rule = types.Rule{RuleFile: tmplFile}
+            }
+            rule.Content = string(pair.Value)
+            tmplMap[tmplFile] = rule
+        } else if strings.HasSuffix(pair.Key, "/enable") {
+            rule, exists := tmplMap[tmplFile]
+            if !exists {
+                rule = types.Rule{RuleFile: tmplFile}
+            }
+            rule.Enable = string(pair.Value) == "true"
+            tmplMap[tmplFile] = rule
+        }
+    }
+
+    templates := make([]types.Rule, 0)
+    for _, rule := range tmplMap {
+        templates = append(templates, rule)
+    }
+    return templates, nil
+}
+
+// 获取模板
+func (s *AlertService) GetTemplate(clusterName, tmplFile string) (string, error) {
+    key := fmt.Sprintf("alert/cluster/%s/tmpl/%s/tmpl", clusterName, tmplFile)
+    pair, _, err := s.consul.Client.KV().Get(key, nil)
+    if err != nil {
+        return "", fmt.Errorf("failed to get template: %v", err)
+    }
+    if pair == nil {
+        return "", nil
+    }
+    return string(pair.Value), nil
+}
+
+// 保存模板
+func (s *AlertService) SaveTemplate(clusterName, tmplFile, content string) error {
+    // TODO: 添加模板语法验证
+    contentKey := fmt.Sprintf("alert/cluster/%s/tmpl/%s/tmpl", clusterName, tmplFile)
+    enableKey := fmt.Sprintf("alert/cluster/%s/tmpl/%s/enable", clusterName, tmplFile)
+    
+    // 保存模板内容
+    _, err := s.consul.Client.KV().Put(&api.KVPair{
+        Key:   contentKey,
+        Value: []byte(content),
+    }, nil)
+    if err != nil {
+        return fmt.Errorf("failed to save template content: %v", err)
+    }
+    
+    // 默认启用模板
+    _, err = s.consul.Client.KV().Put(&api.KVPair{
+        Key:   enableKey,
+        Value: []byte("true"),
+    }, nil)
+    if err != nil {
+        return fmt.Errorf("failed to save template status: %v", err)
+    }
+    
+    return nil
+}
+
+// 删除模板
+func (s *AlertService) DeleteTemplate(clusterName, tmplFile string) error {
+    prefix := fmt.Sprintf("alert/cluster/%s/tmpl/%s", clusterName, tmplFile)
+    _, err := s.consul.Client.KV().DeleteTree(prefix, nil)
+    if err != nil {
+        return fmt.Errorf("failed to delete template: %v", err)
+    }
+    return nil
+}
+
+// 切换模板状态
+func (s *AlertService) ToggleTemplate(clusterName, tmplFile string, enable bool) error {
+    key := fmt.Sprintf("alert/cluster/%s/tmpl/%s/enable", clusterName, tmplFile)
+    _, err := s.consul.Client.KV().Put(&api.KVPair{
+        Key:   key,
+        Value: []byte(fmt.Sprintf("%v", enable)),
+    }, nil)
+    if err != nil {
+        return fmt.Errorf("failed to toggle template: %v", err)
+    }
+    return nil
+}

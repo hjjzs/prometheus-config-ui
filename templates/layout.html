@@ -60,12 +60,15 @@
                         {{template "prometheus-configs" .}}
                     {{else if eq .Content "prometheus-rules"}}
                         {{template "prometheus-rules" .}}
+                    {{else if eq .Content "prometheus-cluster-rules"}}
+                        {{template "prometheus-cluster-rules" .}}
+                        
                     {{else if eq .Content "alertmanager-configs"}}
                         {{template "alertmanager-configs" .}}
                     {{else if eq .Content "alertmanager-tmpls"}}
                         {{template "alertmanager-tmpls" .}}
-                    {{else if eq .Content "prometheus-cluster-rules"}}
-                        {{template "prometheus-cluster-rules" .}}
+                    {{else if eq .Content "alertmanager-cluster-tmpls"}}
+                        {{template "alertmanager-cluster-tmpls" .}}
                     {{else}}
                         <h2>欢迎使用Prometheus & Alertmanager 管理系统</h2>
                     {{end}}

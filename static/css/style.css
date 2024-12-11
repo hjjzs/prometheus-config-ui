@@ -160,7 +160,7 @@ header {
     background: #27ae60;
 }
 
-pre.config-content, pre.rule-content {
+pre.config-content, pre.rule-content, pre.template-content {
     background: #f8f9fa;
     padding: 15px;
     border-radius: 4px;
@@ -176,39 +176,6 @@ pre.config-content, pre.rule-content {
     background: #f8f9fa;
     border-radius: 8px;
     margin: 20px 0;
-}
-
-.user-info {
-    margin: 10px 0;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 4px;
-}
-
-.user-info p {
-    margin: 5px 0;
-    color: #666;
-}
-
-.user-item h3 {
-    color: #2c3e50;
-    margin: 0 0 10px 0;
-}
-
-.users h2 {
-    color: #2c3e50;
-    margin-bottom: 20px;
-}
-
-/* Card hover effect */
-.card {
-    transition: transform 0.2s, box-shadow 0.2s;
-    min-width: 750px;
-}
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
 /* Custom button styles */

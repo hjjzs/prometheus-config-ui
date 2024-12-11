@@ -1,18 +1,383 @@
 {{define "alertmanager-tmpls"}}
-<div class="alert-rules">
-    <h2>Alertmanager 告警模板列表</h2>
-    <div class="rules-list">
-        {{range .Rules}}
-        <div class="rule-item">
-            <h3>{{.Name}}</h3>
-            <pre class="rule-content">{{.Content}}</pre>
-            <div class="actions">
-                <button onclick="editAlertRule('{{.Name}}')">编辑</button>
-                <button onclick="deleteAlertRule('{{.Name}}')">删除</button>
+<div class="alert-tmpls">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0">Alertmanager 集群列表</h2>
+    </div>
+
+    <div class="clusters-list">
+        {{if .Clusters}}
+            <div class="list-group shadow-sm">
+                {{range .Clusters}}
+                <a href="/alertmanager/tmpls/{{.Name}}" class="list-group-item list-group-item-action hover-shadow">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-hdd-network me-2 text-primary"></i>
+                            <h5 class="mb-0 d-inline">{{.Name}}</h5>
+                        </div>
+                        <div>
+                            <span class="badge bg-light text-primary me-2">
+                                <i class="bi bi-file-text me-1"></i>告警模板
+                            </span>
+                            <i class="bi bi-chevron-right text-primary"></i>
+                        </div>
+                    </div>
+                </a>
+                {{end}}
             </div>
-        </div>
+        {{else}}
+            <div class="alert alert-info text-center py-5 shadow-sm">
+                <i class="bi bi-info-circle-fill fs-4 d-block mb-3 text-primary"></i>
+                <p class="mb-0">暂无Alertmanager集群</p>
+                <small class="text-muted">请先添加集群后管理告警模板</small>
+            </div>
         {{end}}
-        <button class="add-btn" onclick="addNewAlertRule()">添加新模板</button>
     </div>
 </div>
+{{end}}
+
+{{define "alertmanager-cluster-tmpls"}}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.min.css">
+
+<style>
+    #monaco-editor {
+        width: 100%;
+        height: 400px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    /* 添加全屏样式 */
+    .fullscreen {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 9999;
+    }
+    
+    /* 全屏按钮样式 */
+    .fullscreen-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: rgba(0,0,0,0.6);
+        border: none;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    .fullscreen-btn:hover {
+        background: rgba(0,0,0,0.8);
+    }
+    
+    .modal.fullscreen-modal .modal-dialog {
+        max-width: 100%;
+        margin: 0;
+        height: 100%;
+    }
+    
+    .modal.fullscreen-modal .modal-content {
+        height: 100%;
+        border: 0;
+        border-radius: 0;
+    }
+    
+    .modal.fullscreen-modal .modal-body {
+        position: relative;
+        padding: 0;
+    }
+</style>
+
+<div class="alert-tmpls">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="/alertmanager/tmpls" class="btn btn-outline-secondary btn-sm mb-2">
+                <i class="bi bi-arrow-left me-1"></i>返回集群列表
+            </a>
+            <h2 class="h3 mb-0">{{.Cluster}} - 告警模板列表</h2>
+        </div>
+        <button class="btn btn-primary" onclick="addNewTemplate()">
+            <i class="bi bi-plus-lg me-2"></i>添加新模板
+        </button>
+    </div>
+
+    <div class="templates-list">
+        {{if .Templates}}
+            <div class="list-group shadow-sm">
+                {{range .Templates}}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center" 
+                        data-bs-toggle="collapse"
+                        href="#template-{{.RuleFile}}"
+                        role="button" 
+                        aria-expanded="false">
+                        <h5 class="mb-0">告警模板:{{.RuleFile}}</h5>
+                        <div>
+                            <span class="badge {{if .Enable}}bg-success{{else}}bg-danger{{end}} me-2">
+                                {{if .Enable}}启用{{else}}禁用{{end}}
+                            </span>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                    <div class="collapse" id="template-{{.RuleFile}}">
+                        <pre class="template-content my-3">{{.Content}}</pre>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary btn-sm" onclick="editTemplate('{{$.Cluster}}', '{{.RuleFile}}')">
+                                <i class="bi bi-pencil me-1"></i>编辑
+                            </button>
+                            <button class="btn btn-outline-{{if .Enable}}warning{{else}}success{{end}} btn-sm" 
+                                onclick="toggleTemplate('{{.RuleFile}}', '{{if .Enable}}false{{else}}true{{end}}')">
+                                <i class="bi bi-{{if .Enable}}dash-circle{{else}}check-circle{{end}} me-1"></i>
+                                {{if .Enable}}禁用{{else}}启用{{end}}
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteTemplate('{{.RuleFile}}')">
+                                <i class="bi bi-trash me-1"></i>删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        {{else}}
+            <div class="alert alert-info text-center py-5 shadow-sm">
+                <i class="bi bi-info-circle-fill fs-4 d-block mb-3 text-primary"></i>
+                <p class="mb-0">暂无告警模板</p>
+                <small class="text-muted">点击右上角添加新模板</small>
+            </div>
+        {{end}}
+    </div>
+
+    <!-- 编辑模板弹窗 -->
+    <div class="modal fade" id="tmplModal" tabindex="-1" aria-labelledby="tmplModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title text-primary">
+                        <i class="bi bi-file-text me-2"></i>编辑告警模板
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="tmplFile" class="form-label">模板文件名</label>
+                        <input type="text" class="form-control" id="tmplFile" placeholder="example(不要文件后缀)">
+                    </div>
+                    <div style="position: relative;">
+                        <button type="button" class="fullscreen-btn" onclick="toggleFullscreen()">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                        <div id="monaco-editor"></div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" id="cancelButton">
+                        <i class="bi bi-x-lg me-1"></i>取消
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="saveTemplate()" id="saveButton">
+                        <i class="bi bi-check-lg me-1"></i>保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>var require = { paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs' } };</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/loader.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.nls.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.min.js"></script>
+
+
+<script>
+let editor;
+let currentCluster = '{{.Cluster}}';
+let currentTemplate ;
+let isFullscreen = false;
+let tmplModal;
+
+// 添加全屏切换函数
+function toggleFullscreen() {
+    const modal = document.getElementById('tmplModal');
+    const editorContainer = document.getElementById('monaco-editor');
+    const btn = document.querySelector('.fullscreen-btn i');
+    
+    isFullscreen = !isFullscreen;
+    
+    if (isFullscreen) {
+        modal.classList.add('fullscreen-modal');
+        editorContainer.classList.add('fullscreen');
+        btn.classList.remove('bi-arrows-fullscreen');
+        btn.classList.add('bi-fullscreen-exit');
+    } else {
+        modal.classList.remove('fullscreen-modal');
+        editorContainer.classList.remove('fullscreen');
+        btn.classList.remove('bi-fullscreen-exit');
+        btn.classList.add('bi-arrows-fullscreen');
+    }
+    
+    // 重新计算编辑器大小
+    editor.layout();
+}
+
+require(['vs/editor/editor.main'], function() {
+    editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+        value: '',
+        language: 'html',
+        theme: 'vs-dark',
+        minimap: { enabled: false },
+        automaticLayout: true,
+        fontSize: 14,
+        tabSize: 2,
+        renderWhitespace: 'all',
+        scrollBeyondLastLine: false,
+        keyboard: {
+            bindKey: function(e) {
+                if (e.keyCode === 27 && isFullscreen) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return true;
+                }
+                return false;
+            }
+        }
+    });
+    // 监听模态框显示事件，刷新编辑器
+    document.getElementById('tmplModal').addEventListener('shown.bs.modal', function () {
+        editor.layout();
+    });
+
+    // 监听 ESC 键退出全屏
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isFullscreen) {
+            e.stopPropagation();
+            toggleFullscreen();
+        }
+    }, true);
+
+    // 阻止 modal 响应 ESC 键
+    document.getElementById('tmplModal').addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isFullscreen) {
+            e.stopPropagation();
+        }
+    }, true);
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap not loaded');
+        return;
+    }
+    
+    const modal = document.getElementById('tmplModal');
+    tmplModal = new bootstrap.Modal(modal);
+    
+    // 在模态框隐藏之前,将焦点移到一个安全的元素
+    modal.addEventListener('hide.bs.modal', function() {
+        // 将焦点移到body
+        document.body.focus();
+    });
+    
+    // 在模态框完全隐藏后重置状态
+    modal.addEventListener('hidden.bs.modal', function() {
+        if (isFullscreen) {
+            toggleFullscreen();
+        }
+        // 清除编辑器内容
+        editor.setValue('');
+        // 重置文件名输入
+        document.getElementById('tmplFile').value = '';
+    });
+});
+
+function addNewTemplate() {
+    document.getElementById('tmplFile').value = '';
+    document.getElementById('tmplFile').disabled = false;
+    editor.setValue("\{\{ define \"alertmanager-tmpls\" \}\}\n\{\{ end \}\}");
+    tmplModal.show();
+}
+
+function editTemplate(cluster, tmplFile) {
+    currentCluster = cluster;
+    currentTemplate = tmplFile;
+    
+    document.getElementById('tmplFile').value = tmplFile;
+    document.getElementById('tmplFile').disabled = true;
+    
+    fetch(`/api/alertmanager/tmpl/${cluster}/${tmplFile}`)
+        .then(response => response.text())
+        .then(content => {
+            editor.setValue(content);
+            tmplModal.show();
+        });
+}
+
+function saveTemplate() {
+    const tmplFile = document.getElementById('tmplFile').value;
+    const content = editor.getValue();
+    
+    if (!tmplFile) {
+        alert('请输入模板文件名');
+        return;
+    }
+    
+    if (!/^[a-zA-Z0-9_]+$/.test(tmplFile)) {
+        alert('规则文件名只允许字母、数字、下划线');
+        return;
+    }
+    
+    if (!content) {
+        alert('模板内容不能为空');
+        return;
+    }
+    
+    fetch(`/api/alertmanager/tmpl/${currentCluster}/${tmplFile}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'text/plain',
+        },
+        body: content,
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(text);
+            });
+        }
+        tmplModal.hide();
+        window.location.reload();
+    })
+    .catch(error => alert('保存模板失败: ' + error.message));
+}
+
+function toggleTemplate(tmplFile, enableStr) {
+    const enable = enableStr === 'true';
+    fetch(`/api/alertmanager/tmpl/${currentCluster}/${tmplFile}/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ enable }),
+    })
+    .then(() => window.location.reload())
+    .catch(error => alert('切换模板状态失败: ' + error.message));
+}
+
+function deleteTemplate(tmplFile) {
+    if (confirm(`确定要删除模板 ${tmplFile} 吗?`)) {
+        fetch(`/api/alertmanager/tmpl/${currentCluster}/${tmplFile}`, {
+            method: 'DELETE',
+        })
+        .then(() => window.location.reload())
+        .catch(error => alert('删除模板失败: ' + error.message));
+    }
+}
+
+
+</script>
 {{end}} 
