@@ -294,7 +294,7 @@ watch_alert_config() {
         new_index=$(echo $RESPONSE | jq -r '.[0].ModifyIndex')
         
         if [ "$new_index" != "null" ] && [ "$new_index" != "$last_modify_index" ]; then
-            log "[AlertConfig] 检测到变化，当前ModifyIndex: $new_index (上次: $last_modify_index)"
+            log "[AlertConfig] 检测到变化,当前ModifyIndex: $new_index (上次: $last_modify_index)"
             
             # 解析配置
             value=$(echo $RESPONSE | jq -r '.[0].Value' | base64 -d 2>/dev/null)
@@ -337,7 +337,7 @@ watch_tmpl() {
         new_index=$(echo $RESPONSE | jq -r 'map(.ModifyIndex) | max')
         
         if [ "$new_index" != "null" ] && [ "$new_index" != "$index" ]; then
-            log "[AlertTmpl] 检测到变化，当前index: $new_index"
+            log "[AlertTmpl] 检测到变化,当前index: $new_index"
             
             # 获取所有项目并存储到数组
             readarray -t ITEMS < <(echo $RESPONSE | jq -r '.[] | @base64')
@@ -355,7 +355,7 @@ watch_tmpl() {
                     if [[ $key =~ $tmpl_path/([^/]+)/tmpl$ ]]; then
                         tmpl_file="${BASH_REMATCH[1]}"
                         if [ ! -z "$value" ]; then
-                            log "[AlertTmpl] #处理模板文件: $tmpl_file"
+                            log "[AlertTmpl] 处理模板文件: $tmpl_file"
                             handle_alertmanager_tmpl "$tmpl_file" "$value"
                             last_modify_indices[$key]=$modify_index
                         fi
@@ -371,7 +371,7 @@ watch_tmpl() {
             # 后处理所有pending的enable事件
             for tmpl_file in "${!pending_enables[@]}"; do
                 enable_value="${pending_enables[$tmpl_file]}"
-                log "[AlertTmpl] #处理模板启用状态: $tmpl_file -> $enable_value"
+                log "[AlertTmpl] 处理模板启用状态: $tmpl_file -> $enable_value"
                 handle_alertmanager_tmpl_enable "$tmpl_file" "$enable_value"
             done
             
