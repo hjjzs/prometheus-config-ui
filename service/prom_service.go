@@ -68,6 +68,9 @@ func (s *PromService) SaveConfig(clusterName, configContent string) error {
 	// 	return fmt.Errorf("invalid prometheus config: %v", err)
 	// }
 
+	// 将内容中的windows换行符\r\n替换为linux换行符\n
+	configContent = strings.ReplaceAll(configContent, "\r\n", "\n")
+
 	// 保存到 Consul
 	key := fmt.Sprintf("prom/cluster/%s/config", clusterName)
 	_, err := s.consul.Client.KV().Put(&api.KVPair{

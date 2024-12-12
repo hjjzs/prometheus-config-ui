@@ -57,7 +57,7 @@ func (s *AlertService) GetConfig(clusterName string) (string, error) {
 
 // 保存配置
 func (s *AlertService) SaveConfig(clusterName, configContent string) error {
-		// TODO: 添加alertmanager配置验证
+	//alertmanager配置验证
 	var cfg alertconfig.Config
 	if err := yaml.Unmarshal([]byte(configContent), &cfg); err != nil {
 		return fmt.Errorf("invalid alertmanager config format: %v", err)
@@ -73,6 +73,9 @@ func (s *AlertService) SaveConfig(clusterName, configContent string) error {
 	if len(cfg.Receivers) == 0 {
 		return fmt.Errorf("missing required 'receivers' section in alertmanager config")
 	}
+
+    // 将内容中的windows换行符\r\n替换为linux换行符\n
+    configContent = strings.ReplaceAll(configContent, "\r\n", "\n")
 	
     // 保存到 Consul
     key := fmt.Sprintf("alert/cluster/%s/config", clusterName)
@@ -170,10 +173,9 @@ func (s *AlertService) GetTemplate(clusterName, tmplFile string) (string, error)
 
 // 保存模板
 func (s *AlertService) SaveTemplate(clusterName, tmplFile, content string) error {
-    // TODO: 添加模板语法验证
     contentKey := fmt.Sprintf("alert/cluster/%s/tmpl/%s/tmpl", clusterName, tmplFile)
     enableKey := fmt.Sprintf("alert/cluster/%s/tmpl/%s/enable", clusterName, tmplFile)
-    
+
     // 保存模板内容
     _, err := s.consul.Client.KV().Put(&api.KVPair{
         Key:   contentKey,
