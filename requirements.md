@@ -140,9 +140,14 @@ prometheus 实现功能：
   3. 根据key类型路由到不同处理函数:
      - rules/{rule_file}/rules: 更新规则文件内容
      - rules/{rule_file}/enable: 更新规则启用状态
+     - rules 事件优先级高于enable 事件，先同步rules 配置，然后同步enable状态，防止当rules下次enable时，文件内容与consul不一致。
   4. 通过比较ModifyIndex与缓存判断是否需要处理
   5. 处理完成后更新缓存的ModifyIndex
 
+- restart_prometheus函数:
+  1. 使用调用prometheus 的reload api (默认开启，下面方法注释，需要取消注释)
+  2. 通过kill -HUP 发送信号重启prometheus
+  3. 针对docker 容器化的prometheus, 使用docker kill -s HUP <container_id> 重启prometheus
 
 alertmanager 实现功能：
 - 使用declare -A last_modify_indices 在内存中建立consul key 的ModifyIndex缓存,用于判断key是否变化
@@ -157,6 +162,11 @@ alertmanager 实现功能：
   3. 根据key类型路由到不同处理函数:
      - tmpl/{tmpl_file}/tmpl: 更新模板文件内容
      - tmpl/{tmpl_file}/enable: 更新模板启用状态
+     - tmpl 事件优先级高于enable 事件，先同步tmpl 配置，然后同步enable状态，防止当tmpl下次enable时，文件内容与consul不一致。
+- restart_alertmanager函数:
+  1. 使用调用alertmanager 的reload api (默认开启，下面方法注释，需要取消注释)
+  2. 通过kill -HUP 发送信号重启alertmanager
+  3. 针对docker 容器化的alertmanager, 使用docker kill -s HUP <container_id> 重启alertmanager
 
 
 
