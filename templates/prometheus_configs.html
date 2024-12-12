@@ -134,6 +134,7 @@
 <script>
 let currentCluster = '';
 let editor;
+let configModal;
 let isFullscreen = false;
 
 // 添加全屏切换函数
@@ -187,6 +188,7 @@ require(['vs/editor/editor.main'], function() {
         }
     });
 
+    configModal = new bootstrap.Modal(document.getElementById('configModal'));
     // 监听模态框显示事件，刷新编辑器
     document.getElementById('configModal').addEventListener('shown.bs.modal', function () {
         editor.layout();
@@ -215,7 +217,7 @@ function editConfig(clusterName) {
         .then(response => response.text())
         .then(config => {
             editor.setValue(config);
-            new bootstrap.Modal(document.getElementById('configModal')).show();
+            configModal.show();
         });
 }
 
@@ -234,7 +236,7 @@ function saveConfig() {
                 throw new Error(text);
             });
         }
-        bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
+        configModal.hide();
         window.location.reload();
     })
     .catch(error => {

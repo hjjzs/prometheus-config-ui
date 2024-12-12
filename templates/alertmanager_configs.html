@@ -144,6 +144,29 @@ require(['vs/editor/editor.main'], function() {
     });
 
     configModal = new bootstrap.Modal(document.getElementById('configModal'));
+    
+
+    // 监听模态框显示事件，刷新编辑器
+    document.getElementById('configModal').addEventListener('shown.bs.modal', function () {
+        editor.layout();
+    });
+
+    // 监听 ESC 键退出全屏
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isFullscreen) {
+            // 阻止事件冒泡，防止触发 modal 的关闭
+            e.stopPropagation();
+            toggleFullscreen();
+        }
+    }, true); // 使用捕获阶段处理事件
+
+    // 阻止 modal 响应 ESC 键
+    document.getElementById('configModal').addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isFullscreen) {
+            e.stopPropagation();
+        }
+    }, true);
+
 });
 
 function editConfig(clusterName) {
