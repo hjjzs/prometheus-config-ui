@@ -76,7 +76,7 @@ watch_config() {
         
         # 检查响应是否为空
         if [ -z "$RESPONSE" ] || [ "$RESPONSE" = "null" ]; then
-            log "[Config] 无法获取consul响应或路径不存在"
+            log "[PromConfig] 无法获取consul响应或路径不存在"
             sleep 5
             continue
         fi
@@ -85,7 +85,7 @@ watch_config() {
         new_index=$(echo $RESPONSE | jq -r '.[0].ModifyIndex')
         
         if [ "$new_index" != "null" ] && [ "$new_index" != "$last_modify_index" ]; then
-            log "[Config] 检测到变化，当前ModifyIndex: $new_index (上次: $last_modify_index)"
+            log "[PromConfig] 检测到变化,当前ModifyIndex: $new_index (上次: $last_modify_index)"
             
             # 解析配置
             value=$(echo $RESPONSE | jq -r '.[0].Value' | base64 -d 2>/dev/null)
@@ -99,7 +99,7 @@ watch_config() {
             index=$new_index
         fi
         
-        log "[Config] 监控中... (当前 Index: $index)"
+        log "[PromConfig] 监控中... (当前 Index: $index)"
         sleep 1
     done
 }
@@ -110,6 +110,7 @@ watch_rules() {
     local rules_path="$cluster_path/rules"
     local index=0
     declare -A last_modify_indices
+    declare -A pending_enables  # 用于存储待处理的enable事件
     
     while true; do
         # 使用长轮询等待变更
@@ -118,7 +119,7 @@ watch_rules() {
         
         # 检查响应是否为空
         if [ -z "$RESPONSE" ] || [ "$RESPONSE" = "null" ]; then
-            log "[Rules] 无法获取consul响应或路径不存在"
+            log "[PromRules] 无法获取consul响应或路径不存在"
             sleep 5
             continue
         fi
@@ -127,59 +128,62 @@ watch_rules() {
         new_index=$(echo $RESPONSE | jq -r 'map(.ModifyIndex) | max')
         
         if [ "$new_index" != "null" ] && [ "$new_index" != "$index" ]; then
-            log "[Rules] 检测到变化，当前index: $new_index"
+            log "[PromRules] 检测到变化,当前index: $new_index"
             
             # 获取所有项目并存储到数组
             readarray -t ITEMS < <(echo $RESPONSE | jq -r '.[] | @base64')
             
-            # 遍历数组处理每个项目
+            # 调试输出
+            log "[PromRules] 当前缓存状态:"
+            for k in "${!last_modify_indices[@]}"; do
+                log "  $k -> ${last_modify_indices[$k]}"
+            done
+            
+            # 先处理rules事件
             for item in "${ITEMS[@]}"; do
-                # 解码项目
                 DECODED=$(echo $item | base64 -d)
-                
-                # 获取key信息
                 key=$(echo $DECODED | jq -r '.Key')
                 value=$(echo $DECODED | jq -r '.Value' | base64 -d 2>/dev/null)
                 modify_index=$(echo $DECODED | jq -r '.ModifyIndex')
-                
-                # 获取缓存的index
                 cached_index=${last_modify_indices[$key]:-0}
-                
-                # 调试输出
-                log "[Rules] 当前缓存状态:"
-                for k in "${!last_modify_indices[@]}"; do
-                    log "  $k -> ${last_modify_indices[$k]}"
-                done
                 
                 # 检查是否需要处理这个key
                 if [ -z "$cached_index" ] || [ "$modify_index" -gt "$cached_index" ]; then
-                    log "[Rules] 处理变更的key: $key (ModifyIndex: $modify_index, 缓存的Index: $cached_index)"
+                    log "[PromRules] 处理变更的key: $key (ModifyIndex: $modify_index, 缓存的Index: $cached_index)"
                     
                     if [[ $key =~ $rules_path/([^/]+)/rules$ ]]; then
                         rule_file="${BASH_REMATCH[1]}"
                         if [ ! -z "$value" ]; then
                             handle_prometheus_rule "$rule_file" "$value"
                             last_modify_indices[$key]=$modify_index
-                            log "[Rules] 更新缓存 $key -> $modify_index"
+                            log "[PromRules] 更新缓存 $key -> $modify_index"
                         fi
                     elif [[ $key =~ $rules_path/([^/]+)/enable$ ]]; then
+                        # 存储enable事件以便后续处理
                         rule_file="${BASH_REMATCH[1]}"
-                        if [ ! -z "$value" ]; then
-                            handle_prometheus_rule_enable "$rule_file" "$value"
-                            last_modify_indices[$key]=$modify_index
-                            log "[Rules] 更新缓存 $key -> $modify_index"
-                        fi
+                        pending_enables[$rule_file]="$value"
+                        last_modify_indices[$key]=$modify_index
                     fi
                 else
-                    log "[Rules] 跳过未变更的key: $key (ModifyIndex: $modify_index, 缓存的Index: $cached_index)"
+                    log "[PromRules] 跳过未变更的key: $key (ModifyIndex: $modify_index, 缓存的Index: $cached_index)"
                 fi
             done
+            
+            # 后处理所有pending的enable事件
+            for rule_file in "${!pending_enables[@]}"; do
+                enable_value="${pending_enables[$rule_file]}"
+                log "[PromRules] 处理规则启用状态: $rule_file -> $enable_value"
+                handle_prometheus_rule_enable "$rule_file" "$enable_value"
+            done
+            
+            # 清空pending_enables数组
+            pending_enables=()
             
             # 更新全局index
             index=$new_index
         fi
         
-        log "[Rules] 监控中... (当前 Index: $index)"
+        log "[PromRules] 监控中... (当前 Index: $index)"
         sleep 1
     done
 }
@@ -189,9 +193,9 @@ watch_rules() {
 restart_prometheus() {
     # 当prometheus 使用--web.enable-lifecycle参数开启热加载时,使用reload。
     if curl -s -XPOST http://localhost:9090/-/reload > /dev/null; then
-        log "Prometheus configuration reloaded successfully"
+        log "[Prometheus] Prometheus configuration reloaded successfully"
     else
-        log "Failed to reload Prometheus configuration"
+        log "[Prometheus] Failed to reload Prometheus configuration"
     fi
 
     # 当prometheus本地部署并使用--config.file参数指定配置文件时,使用kill -HUP pid
@@ -215,12 +219,12 @@ restart_prometheus() {
 handle_prometheus_config() {
     local value=$1
     
-    log "Updating Prometheus config file..."
+    log "[PromConfig] Updating Prometheus config file..."
     echo "$value" > $PROMETHEUS_CONFIG_PATH
     
     # 检查prometheus 配置文件是否存在
     if [ ! -f "$PROMETHEUS_CONFIG_PATH" ]; then
-        log "\033[31mError: Prometheus config file does not exist\033[0m"
+        log "\033[31m[PromConfig] Error: Prometheus config file does not exist\033[0m"
         return
     fi
     
@@ -232,13 +236,18 @@ handle_prometheus_rule() {
     local rule_file=$1
     local content=$2
     local rule_path="$PROMETHEUS_RULES_DIR_PATH/${rule_file}.yml"
+
+    # 检查是否有disabled文件,如果有则删除
+    if [ -f "${rule_path}.disabled" ]; then
+        rm "${rule_path}.disabled"
+    fi
     
-    log "Updating Prometheus rule file: $rule_file"
+    log "[PromRules] Updating Prometheus rule file: $rule_file"
     echo "$content" > "$rule_path"
     
     # 检查prometheus 规则文件是否存在
     if [ ! -f "$rule_path" ]; then
-        log "\033[31mError: Prometheus rule file does not exist\033[0m"
+        log "\033[31m[PromRules] Error: create rule file failed\033[0m"
         return
     fi
     
@@ -250,22 +259,16 @@ handle_prometheus_rule_enable() {
     local rule_file=$1
     local enable=$2
     local rule_path="$PROMETHEUS_RULES_DIR_PATH/${rule_file}.yml"
-    
-    # 检查prometheus 规则文件是否存在, Error标红
-    if [ ! -f "$rule_path" ]; then
-        log "\033[31mError: Prometheus rule file does not exist\033[0m"
-        return
-    fi
 
     if [ "$enable" = "true" ]; then
         if [ -f "${rule_path}.disabled" ]; then
             mv "${rule_path}.disabled" "$rule_path"
-            log "Enabled rule file: $rule_file"
+            log "[PromRules] Enabled rule file: $rule_file"
         fi
     else
         if [ -f "$rule_path" ]; then
             mv "$rule_path" "${rule_path}.disabled"
-            log "Disabled rule file: $rule_file"
+            log "[PromRules] Disabled rule file: $rule_file"
         fi
     fi
     
@@ -429,8 +432,19 @@ handle_alertmanager_tmpl() {
     local content=$2
     local tmpl_path="$ALERTMANAGER_TMPL_PATH/${tmpl_file}.tmpl"
     
+    # 检查是否有disabled文件,如果有则删除
+    if [ -f "${tmpl_path}.disabled" ]; then
+        rm "${tmpl_path}.disabled"
+    fi
+
     log "[AlertTmpl] Updating Alertmanager template file: $tmpl_file"
     echo "$content" > "$tmpl_path"
+
+    # 检查alertmanager 模板文件是否存在
+    if [ ! -f "$tmpl_path" ]; then
+        log "\033[31m[AlertTmpl] Error: create template file failed\033[0m"
+        return
+    fi
 
     # 重新加载alertmanager配置
     restart_alertmanager
@@ -441,12 +455,6 @@ handle_alertmanager_tmpl_enable() {
     local tmpl_file=$1
     local enable=$2
     local tmpl_path="$ALERTMANAGER_TMPL_PATH/${tmpl_file}.tmpl"
-    
-    # 检查alertmanager 模板文件是否存在
-    if [ ! -f "$tmpl_path" ]; then
-        log "\033[31m[AlertTmpl] Error: Alertmanager template file does not exist\033[0m"
-        return
-    fi
 
     if [ "$enable" = "true" ]; then
         if [ -f "${tmpl_path}.disabled" ]; then
