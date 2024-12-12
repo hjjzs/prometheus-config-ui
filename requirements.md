@@ -125,7 +125,10 @@ alertmanager key 设计：
 - ALERTMANAGER_TMPL_PATH: alertmanager 告警模板路径 
 - ALERTMANAGER_CONFIG_PATH: alertmanager 配置文件路径
 
-输出脚本到项目agnet目录下面
+ 
+- `ENABLE_CONSUL_REGISTRY=${ENABLE_CONSUL_REGISTRY:-"true"}` 是否开启consul 注册,主动注册prometheus/alertmanager 服务到consul
+ 
+- `ENABLE_UPLOAD=${ENABLE_UPLOAD:-"true"}`是否开启consul 配置上传, 主动上传prometheus/alertmanager 配置、告警规则、告警模板到consul
 
 prometheus 实现功能：
 - 使用declare -A last_modify_indices 在内存中建立consul key 的ModifyIndex缓存,用于判断key是否变化

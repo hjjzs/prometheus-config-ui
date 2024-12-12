@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 变量定义
-IPADDR="192.168.48.129"
+IPADDR="192.168.48.128"
 PROMETHEUS_CLUSTER_NAME=${HOSTNAME}-${IPADDR}
 ALERTMANAGER_CLUSTER_NAME=${HOSTNAME}-${IPADDR}
 CONSUL_ADDR=${CONSUL_ADDR:-"localhost:8500"}
@@ -10,6 +10,11 @@ PROMETHEUS_CONFIG_PATH=${PROMETHEUS_CONFIG_PATH:-"/opt/prometheus/prometheus/etc
 PROMETHEUS_RULES_DIR_PATH=${PROMETHEUS_RULES_DIR_PATH:-"/opt/prometheus/prometheus/etc/rules"}
 ALERTMANAGER_CONFIG_PATH=${ALERTMANAGER_CONFIG_PATH:-"/opt/prometheus/alert/etc/alertmanager.yml"}
 ALERTMANAGER_TMPL_PATH=${ALERTMANAGER_TMPL_PATH:-"/opt/prometheus/alert/etc/tmpl"}
+
+# 是否开启consul 注册,主动注册prometheus/alertmanager 服务到consul
+ENABLE_CONSUL_REGISTRY=${ENABLE_CONSUL_REGISTRY:-"true"}
+# ENABLE_UPLOAD 是否开启consul 配置上传, 主动上传prometheus/alertmanager 配置、告警规则、告警模板到consul
+ENABLE_UPLOAD=${ENABLE_UPLOAD:-"true"}
 
 # 进程ID数组
 declare -a CHILD_PIDS
@@ -340,7 +345,7 @@ watch_tmpl() {
         new_index=$(echo $RESPONSE | jq -r 'map(.ModifyIndex) | max')
         
         if [ "$new_index" != "null" ] && [ "$new_index" != "$index" ]; then
-            log "[AlertTmpl] 检测到变化,当前index: $new_index"
+            log "[AlertTmpl] 检测到变化,��前index: $new_index"
             
             # 获取所有项目并存储到数组
             readarray -t ITEMS < <(echo $RESPONSE | jq -r '.[] | @base64')
@@ -401,7 +406,6 @@ restart_alertmanager() {
     fi
 
     # 当alertmanager本地部署并使用--config.file参数指定配置文件时,使用kill -HUP pid
-    
     # if [ -f "$ALERTMANAGER_CONFIG_PATH" ]; then
     #     pid=$(pgrep -f "alertmanager --config.file=$ALERTMANAGER_CONFIG_PATH")
     #     if [ ! -z "$pid" ]; then
@@ -471,6 +475,135 @@ handle_alertmanager_tmpl_enable() {
     restart_alertmanager
 }
 
+# Consul服务注册
+consul_register() {
+    log "[Registry] 开始注册集群到Consul..."
+    
+    # 注册Prometheus集群
+    local prom_key="prom/cluster/$PROMETHEUS_CLUSTER_NAME/config"
+    if [ -f "$PROMETHEUS_CONFIG_PATH" ]; then
+        local prom_config=$(cat "$PROMETHEUS_CONFIG_PATH")
+        if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+            --data-binary "$prom_config" \
+            "$CONSUL_ADDR/v1/kv/$prom_key" > /dev/null 2>&1; then
+            log "[Registry] Prometheus集群注册成功"
+        else
+            log "\033[31m[Registry] Prometheus集群注册失败\033[0m"
+        fi
+    else
+        # 如果配置文件不存在，创建空配置
+        if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+            --data-binary "{\"Value\":\"\"}" \
+            "$CONSUL_ADDR/v1/kv/$prom_key" > /dev/null 2>&1; then
+            log "[Registry] Prometheus集群(空配置)注册成功"
+        else
+            log "\033[31m[Registry] Prometheus集群注册失败\033[0m"
+        fi
+    fi
+    
+    # 注册Alertmanager集群
+    local alert_key="alert/cluster/$ALERTMANAGER_CLUSTER_NAME/config"
+    if [ -f "$ALERTMANAGER_CONFIG_PATH" ]; then
+        local alert_config=$(cat "$ALERTMANAGER_CONFIG_PATH")
+        if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+            --data-binary "$alert_config" \
+            "$CONSUL_ADDR/v1/kv/$alert_key" > /dev/null 2>&1; then
+            log "[Registry] Alertmanager集群注册成功"
+        else
+            log "\033[31m[Registry] Alertmanager集群注册失败\033[0m"
+        fi
+    else
+        # 如果配置文件不存在，创建空配置
+        if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+            --data-binary "" \
+            "$CONSUL_ADDR/v1/kv/$alert_key" > /dev/null 2>&1; then
+            log "[Registry] Alertmanager集群(空配置)注册成功"
+        else
+            log "\033[31m[Registry] Alertmanager集群注册失败\033[0m"
+        fi
+    fi
+}
+
+# Consul配置上传
+consul_upload() {
+    log "[Upload] 开始上传prometheus 告警规则、告警模板到Consul..."
+    
+    # 上传Prometheus规则
+    if [ -d "$PROMETHEUS_RULES_DIR_PATH" ]; then
+        for rule_file in "$PROMETHEUS_RULES_DIR_PATH"/*.yml; do
+            if [ -f "$rule_file" ]; then
+                local rule_name=$(basename "$rule_file" .yml)
+                local rule_content=$(cat "$rule_file")
+                local rule_path="prom/cluster/$PROMETHEUS_CLUSTER_NAME/rules/$rule_name/rules"
+                local enable_path="prom/cluster/$PROMETHEUS_CLUSTER_NAME/rules/$rule_name/enable"
+                
+                # 上传规则内容
+                if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+                    --data-binary "$rule_content" \
+                    "$CONSUL_ADDR/v1/kv/$rule_path" > /dev/null 2>&1; then
+                    log "[Upload] 规则文件 $rule_name 上传成功"
+                else
+                    log "\033[31m[Upload] 规则文件 $rule_name 上传失败\033[0m"
+                fi
+                
+                # 设置规则启用状态
+                if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+                    --data-binary "true" \
+                    "$CONSUL_ADDR/v1/kv/$enable_path" > /dev/null 2>&1; then
+                    log "[Upload] 规则 $rule_name 启用状态设置成功"
+                else
+                    log "\033[31m[Upload] 规则 $rule_name 启用状态设置失败\033[0m"
+                fi
+            fi
+        done
+    fi
+    
+    log "[Upload] 开始上传alertmanager 告警模板到Consul..."
+    
+    # 上传Alertmanager模板
+    if [ -d "$ALERTMANAGER_TMPL_PATH" ]; then
+        for tmpl_file in "$ALERTMANAGER_TMPL_PATH"/*.tmpl; do
+            if [ -f "$tmpl_file" ]; then
+                local tmpl_name=$(basename "$tmpl_file" .tmpl)
+                local tmpl_content=$(cat "$tmpl_file")
+                local tmpl_path="alert/cluster/$ALERTMANAGER_CLUSTER_NAME/tmpl/$tmpl_name/tmpl"
+                local enable_path="alert/cluster/$ALERTMANAGER_CLUSTER_NAME/tmpl/$tmpl_name/enable"
+                
+                # 上传模板内容
+                if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+                    --data-binary "$tmpl_content" \
+                    "$CONSUL_ADDR/v1/kv/$tmpl_path" > /dev/null 2>&1; then
+                    log "[Upload] 模板文件 $tmpl_name 上传成功"
+                else
+                    log "\033[31m[Upload] 模板文件 $tmpl_name 上传失败\033[0m"
+                fi
+                
+                # 设置模板启用状态
+                if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+                    --data-binary "true" \
+                    "$CONSUL_ADDR/v1/kv/$enable_path" > /dev/null 2>&1; then
+                    log "[Upload] 模板 $tmpl_name 启用状态设置成功"
+                else
+                    log "\033[31m[Upload] 模板 $tmpl_name 启用状态设置失败\033[0m"
+                fi
+            fi
+        done
+    fi
+}
+
+# 注册和上传
+register_and_upload() {
+    # 注册prometheus/alertmanager 服务到consul
+    if [ "$ENABLE_CONSUL_REGISTRY" = "true" ]; then
+        consul_register
+
+        # 上传prometheus/alertmanager 告警规则、告警模板到consul
+        if [ "$ENABLE_UPLOAD" = "true" ]; then
+            consul_upload
+        fi
+    fi
+}
+
 # 主函数
 main() {
     log "\033[32m[Agent] Starting agent with cluster names:\033[0m"
@@ -493,6 +626,9 @@ main() {
             fi
         fi
     done
+
+    # 注册和上传
+    register_and_upload
 
     # 启动prometheus配置监控
     watch_config &
