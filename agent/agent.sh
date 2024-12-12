@@ -345,7 +345,7 @@ watch_tmpl() {
         new_index=$(echo $RESPONSE | jq -r 'map(.ModifyIndex) | max')
         
         if [ "$new_index" != "null" ] && [ "$new_index" != "$index" ]; then
-            log "[AlertTmpl] 检测到变化,��前index: $new_index"
+            log "[AlertTmpl] 检测到变化,当前index: $new_index"
             
             # 获取所有项目并存储到数组
             readarray -t ITEMS < <(echo $RESPONSE | jq -r '.[] | @base64')
@@ -491,13 +491,20 @@ consul_register() {
             log "\033[31m[Registry] Prometheus集群注册失败\033[0m"
         fi
     else
-        # 如果配置文件不存在，创建空配置
-        if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
-            --data-binary "{\"Value\":\"\"}" \
-            "$CONSUL_ADDR/v1/kv/$prom_key" > /dev/null 2>&1; then
-            log "[Registry] Prometheus集群(空配置)注册成功"
+        # 如果配置文件不存在，查看consul是否存在prometheus集群配置,如果存在不创建,不存在则创建空配置
+        # 检查consul是否存在prometheus集群配置
+        response=$(curl -s -H "X-Consul-Token: $CONSUL_TOKEN" -X GET "$CONSUL_ADDR/v1/kv/$prom_key")
+        if [ ! -z "$response" ]; then
+            log "[Registry] Prometheus集群配置已存在,跳过注册"
         else
-            log "\033[31m[Registry] Prometheus集群注册失败\033[0m"
+            # 不存在则创建空配置
+            if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+                --data-binary "" \
+                "$CONSUL_ADDR/v1/kv/$prom_key" > /dev/null 2>&1; then
+                log "[Registry] Prometheus集群(空配置)注册成功"
+            else
+                log "\033[31m[Registry] Prometheus集群注册失败\033[0m"
+            fi
         fi
     fi
     
@@ -513,13 +520,20 @@ consul_register() {
             log "\033[31m[Registry] Alertmanager集群注册失败\033[0m"
         fi
     else
-        # 如果配置文件不存在，创建空配置
-        if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
-            --data-binary "" \
-            "$CONSUL_ADDR/v1/kv/$alert_key" > /dev/null 2>&1; then
-            log "[Registry] Alertmanager集群(空配置)注册成功"
+        # 如果配置文件不存在，查看consul是否存在alertmanager集群配置,如果存在不创建,不存在则创建空配置
+        # 检查consul是否存在alertmanager集群配置
+        response=$(curl -s -H "X-Consul-Token: $CONSUL_TOKEN" -X GET "$CONSUL_ADDR/v1/kv/$alert_key")
+        if [ ! -z "$response" ]; then
+            log "[Registry] Alertmanager集群配置已存在,跳过注册"
         else
-            log "\033[31m[Registry] Alertmanager集群注册失败\033[0m"
+            # 不存在则创建空配置
+            if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+                --data-binary "" \
+                "$CONSUL_ADDR/v1/kv/$alert_key" > /dev/null 2>&1; then
+                log "[Registry] Alertmanager集群(空配置)注册成功"
+            else
+                log "\033[31m[Registry] Alertmanager集群注册失败\033[0m"
+            fi
         fi
     fi
 }
