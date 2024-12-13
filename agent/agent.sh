@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # 变量定义
-IPADDR="192.168.48.128"
+IPADDR="192.168.48.127"
 PROMETHEUS_CLUSTER_NAME=${HOSTNAME}-${IPADDR}
 ALERTMANAGER_CLUSTER_NAME=${HOSTNAME}-${IPADDR}
 CONSUL_ADDR=${CONSUL_ADDR:-"localhost:8500"}
 CONSUL_TOKEN=${CONSUL_TOKEN:-"5e7f0c19-73ac-6023-c8ba-eb77988cd641"}
 PROMETHEUS_CONFIG_PATH=${PROMETHEUS_CONFIG_PATH:-"/opt/prometheus/prometheus/etc/prometheus.yml"}
-PROMETHEUS_RULES_DIR_PATH=${PROMETHEUS_RULES_DIR_PATH:-"/opt/prometheus/prometheus/etc/rules"}
+PROMETHEUS_RULES_DIR_PATH=${PROMETHEUS_RULES_DIR_PATH:-"/tmp/prometheus/prometheus/etc/rules"}
 ALERTMANAGER_CONFIG_PATH=${ALERTMANAGER_CONFIG_PATH:-"/opt/prometheus/alert/etc/alertmanager.yml"}
-ALERTMANAGER_TMPL_PATH=${ALERTMANAGER_TMPL_PATH:-"/opt/prometheus/alert/etc/tmpl"}
+ALERTMANAGER_TMPL_PATH=${ALERTMANAGER_TMPL_PATH:-"/tmp/prometheus/alert/etc/tmpl"}
 
 # 是否开启consul 注册,主动注册prometheus/alertmanager 服务到consul
 ENABLE_CONSUL_REGISTRY=${ENABLE_CONSUL_REGISTRY:-"true"}
@@ -82,7 +82,7 @@ watch_config() {
         # 检查响应是否为空
         if [ -z "$RESPONSE" ] || [ "$RESPONSE" = "null" ]; then
             log "[PromConfig] 无法获取consul响应或路径不存在"
-            sleep 5
+            sleep 30
             continue
         fi
         
@@ -125,7 +125,7 @@ watch_rules() {
         # 检查响应是否为空
         if [ -z "$RESPONSE" ] || [ "$RESPONSE" = "null" ]; then
             log "[PromRules] 无法获取consul响应或路径不存在"
-            sleep 5
+            sleep 30
             continue
         fi
         
@@ -294,7 +294,7 @@ watch_alert_config() {
         # 检查响应是否为空
         if [ -z "$RESPONSE" ] || [ "$RESPONSE" = "null" ]; then
             log "[AlertConfig] 无法获取consul响应或路径不存在"
-            sleep 5
+            sleep 30
             continue
         fi
         
@@ -337,7 +337,7 @@ watch_tmpl() {
         # 检查响应是否为空
         if [ -z "$RESPONSE" ] || [ "$RESPONSE" = "null" ]; then
             log "[AlertTmpl] 无法获取consul响应或路径不存在"
-            sleep 5
+            sleep 30
             continue
         fi
         
@@ -507,10 +507,16 @@ consul_register() {
             fi
         fi
     fi
+    # 创建prometheus 告警规则目录
+    if ! curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+        "$CONSUL_ADDR/v1/kv/prom/cluster/$PROMETHEUS_CLUSTER_NAME/rules/" > /dev/null 2>&1; then
+        log "\033[31m[Registry] 创建prometheus 告警规则目录失败\033[0m"
+    fi
     
     # 注册Alertmanager集群
     local alert_key="alert/cluster/$ALERTMANAGER_CLUSTER_NAME/config"
-    if [ -f "$ALERTMANAGER_CONFIG_PATH" ]; then
+    # 检查alertmanager 配置文件是否存在且不为空
+    if [ -f "$ALERTMANAGER_CONFIG_PATH" ] && [ -s "$ALERTMANAGER_CONFIG_PATH" ]; then
         local alert_config=$(cat "$ALERTMANAGER_CONFIG_PATH")
         if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
             --data-binary "$alert_config" \
@@ -520,21 +526,42 @@ consul_register() {
             log "\033[31m[Registry] Alertmanager集群注册失败\033[0m"
         fi
     else
-        # 如果配置文件不存在，查看consul是否存在alertmanager集群配置,如果存在不创建,不存在则创建空配置
+        # 如果配置文件不存在，查看consul是否存在alertmanager集群配置,如果存在不创建,不存在则创建示例配置
         # 检查consul是否存在alertmanager集群配置
         response=$(curl -s -H "X-Consul-Token: $CONSUL_TOKEN" -X GET "$CONSUL_ADDR/v1/kv/$alert_key")
         if [ ! -z "$response" ]; then
             log "[Registry] Alertmanager集群配置已存在,跳过注册"
         else
-            # 不存在则创建空配置
+            # 不存在则创建示例配置
+            # 示例配置
+            example_config="global:
+  smtp_require_tls: false
+route:
+  group_by: [alertname]
+  group_wait: 5s
+  group_interval: 1m
+  repeat_interval: 5s
+  receiver: dingding
+receivers:
+- name: dingding
+  webhook_configs:
+    - url: http://192.168.48.129:8060/dingtalk/webhook1/send
+      send_resolved: true
+templates:
+ - tmpl/*.tmpl"
             if curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
-                --data-binary "" \
+                --data-binary "$example_config" \
                 "$CONSUL_ADDR/v1/kv/$alert_key" > /dev/null 2>&1; then
                 log "[Registry] Alertmanager集群(空配置)注册成功"
             else
                 log "\033[31m[Registry] Alertmanager集群注册失败\033[0m"
             fi
         fi
+    fi
+    # 创建alertmanager 告警模板目录
+    if ! curl -H "X-Consul-Token: $CONSUL_TOKEN" -X PUT \
+        "$CONSUL_ADDR/v1/kv/alert/cluster/$ALERTMANAGER_CLUSTER_NAME/tmpl/" > /dev/null 2>&1; then
+        log "\033[31m[Registry] 创建alertmanager 告警模板目录失败\033[0m"
     fi
 }
 
