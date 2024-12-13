@@ -171,6 +171,18 @@ alertmanager 实现功能：
   2. 通过kill -HUP 发送信号重启alertmanager
   3. 针对docker 容器化的alertmanager, 使用docker kill -s HUP <container_id> 重启alertmanager
 
+consul_register函数:
+- 如果本地prometheus 配置文件存在，则注册到consul。
+- 如果本地prometheus配置文件不存在，且consul中存在prometheus配置文件，则不创建。
+- 如果本地prometheus配置文件不存在，且consul中不存在prometheus配置文件，则创建默认配置（prometheus 默认空配置)
+- 如果本地alertmanager 配置文件存在且不为空，则注册到consul。
+- 如果本地alertmanager 配置文件不存在，且consul中存在alertmanager 配置文件，则不创建。
+- 如果本地alertmanager 配置文件不存在，且consul中不存在alertmanager 配置文件，则创建默认配置
+- 创建rules/tmpl consul key路径。
+
+consul_upload函数:
+- 上传prometheus 告警规则、告警模板到consul
+
 
 
 
