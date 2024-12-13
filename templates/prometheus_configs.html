@@ -248,8 +248,8 @@ function addNewCluster() {
     const name = prompt('请输入新集群名称:');
 
     // 限制集群名称只允许字母、数字、下划线、点、中划线
-    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-        alert('集群名称只允许字母、数字、下划线、中划线');
+    if (!/^[a-zA-Z0-9_.-]+$/.test(name)) {
+        alert('集群名称只允许字母、数字、下划线、点、中划线');
         return;
     }
     // 限制集群名称长度
