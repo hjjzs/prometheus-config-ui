@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # 变量定义
-IPADDR="192.168.48.127"
+IPADDR="192.168.48.129"
 PROMETHEUS_CLUSTER_NAME=${HOSTNAME}-${IPADDR}
 ALERTMANAGER_CLUSTER_NAME=${HOSTNAME}-${IPADDR}
 CONSUL_ADDR=${CONSUL_ADDR:-"localhost:8500"}
 CONSUL_TOKEN=${CONSUL_TOKEN:-"5e7f0c19-73ac-6023-c8ba-eb77988cd641"}
 PROMETHEUS_CONFIG_PATH=${PROMETHEUS_CONFIG_PATH:-"/opt/prometheus/prometheus/etc/prometheus.yml"}
-PROMETHEUS_RULES_DIR_PATH=${PROMETHEUS_RULES_DIR_PATH:-"/tmp/prometheus/prometheus/etc/rules"}
+PROMETHEUS_RULES_DIR_PATH=${PROMETHEUS_RULES_DIR_PATH:-"/opt/prometheus/prometheus/etc/rules"}
 ALERTMANAGER_CONFIG_PATH=${ALERTMANAGER_CONFIG_PATH:-"/opt/prometheus/alert/etc/alertmanager.yml"}
-ALERTMANAGER_TMPL_PATH=${ALERTMANAGER_TMPL_PATH:-"/tmp/prometheus/alert/etc/tmpl"}
+ALERTMANAGER_TMPL_PATH=${ALERTMANAGER_TMPL_PATH:-"/opt/prometheus/alert/etc/tmpl"}
 
 # 是否开启consul 注册,主动注册prometheus/alertmanager 服务到consul
 ENABLE_CONSUL_REGISTRY=${ENABLE_CONSUL_REGISTRY:-"true"}
