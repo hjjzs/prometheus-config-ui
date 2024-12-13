@@ -11,24 +11,21 @@ import (
 	"os/signal"
 	"syscall"
 	"fmt"
+	"flag"
 )
 
 func main() {
-    
-    
-    // 初始化Consul客户端
-    // config := api.DefaultConfig()
-    // config.Address = "192.168.48.129:8500"
-    // config.Token = "5e7f0c19-73ac-6023-c8ba-eb77988cd641"
-    // client, err := api.NewClient(config)
-    // if err != nil {
-    //     panic(err)
-    // }
-	
+
+    // 运行参数 
+    address := flag.String("address", "192.168.48.129:8500", "consul address")
+    token := flag.String("token", "5e7f0c19-73ac-6023-c8ba-eb77988cd641", "consul token")
+    port := flag.String("port", "8080", "server port")
+    flag.Parse()
+
     // 初始化模板
     templates := template.Must(template.ParseGlob("templates/*"))
     
-	app := handlers.NewApplication(templates)
+	app := handlers.NewApplication(templates, *address, *token)
     // 设置路由
     r := mux.NewRouter()
     
@@ -69,7 +66,7 @@ func main() {
 
     // 优雅退出程序
     srv := &http.Server{
-        Addr:    ":8080",
+        Addr:    ":" + *port,
         Handler: r,
     }
 

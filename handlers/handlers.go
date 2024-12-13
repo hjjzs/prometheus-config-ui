@@ -15,9 +15,7 @@ type Application struct {
     Logger *log.Logger
 }
 
-func NewApplication(templates *template.Template) *Application {
-    address := "192.168.48.129:8500"
-    token := "5e7f0c19-73ac-6023-c8ba-eb77988cd641"
+func NewApplication(templates *template.Template, address string, token string) *Application {
     consulService, err := service.NewConsulService(address, token)
     if err != nil {
         panic(err)
