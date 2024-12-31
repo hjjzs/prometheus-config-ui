@@ -22,8 +22,7 @@
     
 
 虚拟机发现部分实现：
-
-[《Prometheus动态服务发现（实现）》](https://alidocs.dingtalk.com/i/nodes/lyQod3RxJK6zgrn1cp3dQDp4Vkb4Mw9r?utm_scene=person_space)
+./docs/Prometheus动态服务发现（实现）.md
 
 **技术栈**
 
