@@ -45,8 +45,8 @@ alertmanager key 设计：
 - prometheus 告警规则管理
 - alertmanager 配置文件管理
 - alertmanager 告警模板管理
-- 用户管理（consul token） 一个consul token 对应一个用户
-- 角色管理（consul token 权限）
+- 用户管理（consul token） 一个consul token 对应一个用户 (todo,还未实现)
+- 角色管理（consul token 权限）（todo,还未实现）
 
 布局:
 - 菜单（左侧）：prometheus 配置文件管理、prometheus 告警规则管理、alertmanager 配置文件管理、alertmanager 告警模板管理、用户管理（consul token） 一个consul token 对应一个用户、角色管理（consul token 权限）
@@ -184,6 +184,6 @@ consul_upload函数:
 - 上传prometheus 告警规则、告警模板到consul
 
 
-
-
-
+# TODO
+- 添加用户和role 管理基于consul。
+- 使用vue 重写前端。
