@@ -5,6 +5,8 @@ import (
 	"consul-ui/types"
 )
 
+// todo 实现用户管理模块
+
 func (app *Application) HandleUsers(w http.ResponseWriter, r *http.Request) {
 	users := []types.User{
 		{
